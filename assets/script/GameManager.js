@@ -16,15 +16,17 @@ cc.Class({
         pathLine: cc.Graphics,
         
         // 柱子生成参数
-        minPillarDistance: 200,  // 最小柱子间距
-        maxPillarDistance: 400,  // 最大柱子间距
+        minPillarDistance: 350,  // 【修改】最小柱子间距，从200改为350
+        maxPillarDistance: 2000,  // 【修改】最大柱子间距，从400改为550
         minPillarHeight: 100,    // 最小柱子高度
         maxPillarHeight: 300,    // 最大柱子高度
         pillarWidth: 80,         // 柱子宽度
         
         // 发射参数
-        launchPower: 10,         // 降低发射力量（原来是20，现在10）
-        previewShotCount: 999,   // 增加到999，基本上每次都有预览线
+        launchPower: 14,         // 【修改】发射力量从10改为14
+        
+        // 【新增】猴子在屏幕左侧的固定位置（距离屏幕左边的像素）
+        monkeyScreenOffsetX: 100,
         
         // UI
         shotCountLabel: cc.Label,
@@ -34,11 +36,10 @@ cc.Class({
     onLoad() {
         // 启用物理系统
         cc.director.getPhysicsManager().enabled = true;
-        cc.director.getPhysicsManager().gravity = cc.v2(0, -500);  // 降低重力（原来是-980）
+        cc.director.getPhysicsManager().gravity = cc.v2(0, -500);
         
         // 启用碰撞系统
         cc.director.getCollisionManager().enabled = true;
-        // cc.director.getCollisionManager().enabledDebugDraw = true;
         
         // 获取摄像机
         this.camera = cc.find('Canvas/Main Camera').getComponent(cc.Camera);
@@ -46,8 +47,10 @@ cc.Class({
             this.camera = cc.Camera.main;
         }
         this.cameraNode = this.camera.node;
-        this.initialCameraX = this.cameraNode.x;  // 保存初始摄像机位置
-        this.shouldFollowMonkey = false;  // 第一次移动后才开始跟随
+        this.initialCameraX = this.cameraNode.x;
+        
+        // 【修改】计算屏幕宽度的一半，用于摄像机跟随计算
+        this.screenHalfWidth = cc.winSize.width / 2;
         
         // 初始化变量
         this.pillars = [];
@@ -58,25 +61,22 @@ cc.Class({
         this.isMonkeyMoving = false;
         this.pathPoints = [];
         
-        // 如果没有 PreviewLine 和 PathLine，自动创建在 Canvas 节点下（不是 GameManager 下）
-        const canvas = cc.find('Canvas');
+        // 【修改】把 Graphics 节点挂在 GameManager(this.node) 下
+        // 这样它们会跟猴子在同一个坐标系，不需要坐标转换！
         
         if (!this.previewLine) {
-            console.log('🎨 自动创建 PreviewLine（在 Canvas 下）');
+            console.log('🎨 自动创建 PreviewLine（挂在 GameManager 下）');
             const previewNode = new cc.Node('PreviewLine');
-            previewNode.parent = canvas;  // 挂在 Canvas 下
+            previewNode.parent = this.node;  // 【修改】挂在 this.node 下
             this.previewLine = previewNode.addComponent(cc.Graphics);
         }
         
         if (!this.pathLine) {
-            console.log('🎨 自动创建 PathLine（在 Canvas 下）');
+            console.log('🎨 自动创建 PathLine（挂在 GameManager 下）');
             const pathNode = new cc.Node('PathLine');
-            pathNode.parent = canvas;  // 挂在 Canvas 下
+            pathNode.parent = this.node;  // 【修改】挂在 this.node 下
             this.pathLine = pathNode.addComponent(cc.Graphics);
         }
-        
-        console.log('📍 PreviewLine 父节点:', this.previewLine.node.parent.name);
-        console.log('📍 PathLine 父节点:', this.pathLine.node.parent.name);
         
         // 初始化游戏
         this.initGame();
@@ -91,48 +91,37 @@ cc.Class({
     bindTouchEvents() {
         console.log('🔧 绑定触摸事件');
         
+        // 获取 Canvas 节点
         if (!this.canvas) {
             this.canvas = cc.find('Canvas');
         }
         
-        if (this.canvas) {
-            // 先移除旧的监听
-            this.canvas.off(cc.Node.EventType.TOUCH_START);
-            this.canvas.off(cc.Node.EventType.TOUCH_MOVE);
-            this.canvas.off(cc.Node.EventType.TOUCH_END);
-            this.canvas.off(cc.Node.EventType.TOUCH_CANCEL);
-            
-            console.log('旧监听已移除');
-            
-            // 使用 bind 确保 this 指向正确
-            const touchStartHandler = this.onTouchStart.bind(this);
-            const touchMoveHandler = this.onTouchMove.bind(this);
-            const touchEndHandler = this.onTouchEnd.bind(this);
-            
-            // 保存引用，方便后续移除
-            this._touchStartHandler = touchStartHandler;
-            this._touchMoveHandler = touchMoveHandler;
-            this._touchEndHandler = touchEndHandler;
-            
-            // 重新添加监听
-            this.canvas.on(cc.Node.EventType.TOUCH_START, touchStartHandler);
-            this.canvas.on(cc.Node.EventType.TOUCH_MOVE, touchMoveHandler);
-            this.canvas.on(cc.Node.EventType.TOUCH_END, touchEndHandler);
-            this.canvas.on(cc.Node.EventType.TOUCH_CANCEL, touchEndHandler);
-            
-            console.log('✅ 所有触摸事件已重新绑定（使用 bind）');
-            console.log('- TOUCH_START:', !!touchStartHandler);
-            console.log('- TOUCH_MOVE:', !!touchMoveHandler);
-            console.log('- TOUCH_END:', !!touchEndHandler);
-            
-            // 测试：3秒后输出是否还能接收触摸
-            this.scheduleOnce(() => {
-                console.log('⏰ 3秒测试：Canvas节点是否有效:', !!this.canvas);
-                console.log('⏰ 3秒测试：触摸监听数量:', this.canvas._touchListener ? '有' : '无');
-            }, 3);
-        } else {
-            console.error('❌ 找不到 Canvas 节点！');
-        }
+        // 先移除旧的监听
+        this.canvas.off(cc.Node.EventType.TOUCH_START);
+        this.canvas.off(cc.Node.EventType.TOUCH_MOVE);
+        this.canvas.off(cc.Node.EventType.TOUCH_END);
+        this.canvas.off(cc.Node.EventType.TOUCH_CANCEL);
+        
+        // 直接绑定，不使用 bind
+        const self = this;
+        
+        this.canvas.on(cc.Node.EventType.TOUCH_START, function(event) {
+            self.onTouchStart(event);
+        }, this);
+        
+        this.canvas.on(cc.Node.EventType.TOUCH_MOVE, function(event) {
+            self.onTouchMove(event);
+        }, this);
+        
+        this.canvas.on(cc.Node.EventType.TOUCH_END, function(event) {
+            self.onTouchEnd(event);
+        }, this);
+        
+        this.canvas.on(cc.Node.EventType.TOUCH_CANCEL, function(event) {
+            self.onTouchEnd(event);
+        }, this);
+        
+        console.log('✅ 触摸事件绑定完成');
     },
 
     initGame() {
@@ -153,24 +142,40 @@ cc.Class({
         
         this.monkey = cc.instantiate(this.monkeyPrefab);
         this.monkey.parent = this.node;
-        this.monkeyStartPos = this.slingshotNode.position.add(cc.v2(0, 50));
+        
+        // 【修改】猴子初始位置：屏幕左侧 + 偏移量
+        // 摄像机在 x=0 时，屏幕左边缘是 -screenHalfWidth
+        // 猴子位置 = -screenHalfWidth + monkeyScreenOffsetX
+        const initialMonkeyX = -this.screenHalfWidth + this.monkeyScreenOffsetX;
+        this.monkeyStartPos = cc.v2(initialMonkeyX, 0);  // 【修改】Y从-200改为0，猴子位置更高
         this.monkey.position = this.monkeyStartPos;
         
-        // 给猴子添加刚体（Kinematic 类型，不受重力影响，不会碰撞反弹）
+        // 弹弓在猴子下方
+        this.slingshotNode.position = this.monkeyStartPos.add(cc.v2(0, -50));
+        
+        // 给猴子添加刚体（Kinematic 类型）
         let monkeyRigidBody = this.monkey.getComponent(cc.RigidBody);
         if (!monkeyRigidBody) {
             monkeyRigidBody = this.monkey.addComponent(cc.RigidBody);
         }
-        monkeyRigidBody.type = cc.RigidBodyType.Kinematic;  // 关键：Kinematic 类型
-        monkeyRigidBody.enabledContactListener = false;  // 不监听碰撞
+        monkeyRigidBody.type = cc.RigidBodyType.Kinematic;
+        monkeyRigidBody.enabledContactListener = false;
         
         // 保存猴子脚本引用
         this.monkeyScript = this.monkey.getComponent('Monkey');
+        
+        console.log('🐵 猴子创建完成，位置:', this.monkey.position);
     },
 
     generatePillars() {
-        // 生成5根柱子
-        let lastX = this.monkeyStartPos.x + 300;
+        // 生成初始柱子
+        // 【修复】第一根柱子直接从猴子位置 + 固定距离开始
+        let lastX = this.monkey.x;
+        
+        console.log('========== 开始生成柱子 ==========');
+        console.log('猴子X位置:', this.monkey.x);
+        console.log('minPillarDistance:', this.minPillarDistance);
+        console.log('maxPillarDistance:', this.maxPillarDistance);
         
         for (let i = 0; i < 5; i++) {
             const distance = this.minPillarDistance + 
@@ -185,80 +190,79 @@ cc.Class({
             const y = -300; // 地面高度
             pillar.position = cc.v2(x, y);
             
-            // 设置柱子高度
             const pillarScript = pillar.getComponent('Pillar');
             pillarScript.setHeight(height);
             pillarScript.gameManager = this;
             
             this.pillars.push(pillar);
+            
+            console.log('🏛️ 柱子', i + 1, '| 上一个X:', lastX.toFixed(0), '| 间距:', distance.toFixed(0), '| 当前X:', x.toFixed(0));
+            
             lastX = x;
         }
+        console.log('========== 柱子生成完成 ==========');
     },
 
     onTouchStart(event) {
-        if (this.isWaterDropFlying || this.isMonkeyMoving) return;
-        
-        const touchPos = this.node.convertToNodeSpaceAR(event.getLocation());
-        const distance = touchPos.sub(this.slingshotNode.position).mag();
-        
-        if (distance < 100) {
-            this.isDragging = true;
-            this.dragStartPos = touchPos;
-        }
-    },
-
-    onTouchMove(event) {
-        console.log('👆 TouchMove 触发 - 第', this.currentShotCount + 1, '次准备发射');
-        console.log('   - isDragging:', this.isDragging);
+        console.log('========== onTouchStart ==========');
+        console.log('状态检查:');
         console.log('   - isWaterDropFlying:', this.isWaterDropFlying);
         console.log('   - isMonkeyMoving:', this.isMonkeyMoving);
-        console.log('   - 摄像机X:', this.cameraNode ? this.cameraNode.x : 'null');
-        console.log('   - 猴子X:', this.monkey.x);
-        console.log('   - shouldFollowMonkey:', this.shouldFollowMonkey);
         
-        // 如果没有 isDragging 但触摸移动了，尝试重新检测
-        if (!this.isDragging && !this.isWaterDropFlying && !this.isMonkeyMoving) {
-            console.log('⚠️ TouchMove 但未拖拽，尝试启动拖拽');
-            
-            // 简化：只要不在飞行和移动状态，就允许拖拽
-            // 不再检查距离，直接启动
-            this.isDragging = true;
-            console.log('✅ 强制启动拖拽（无条件）');
-        }
-        
-        if (!this.isDragging) {
-            console.log('❌ isDragging = false，跳过处理');
+        if (this.isWaterDropFlying || this.isMonkeyMoving) {
+            console.log('❌ 状态不允许，跳过');
             return;
         }
         
-        console.log('💫 开始处理拖拽移动');
+        const touchPos = this.getTouchPosInWorld(event);
         
-        // 获取触摸的屏幕坐标
-        const touchScreenPos = event.getLocation();
+        // 【简化】弹弓位置 = 猴子位置下方50像素
+        const slingshotPos = cc.v2(this.monkey.x, this.monkey.y - 50);
         
-        // 关键修复：触摸坐标需要加上摄像机偏移！
-        // 因为摄像机移动后，Canvas 的原点相对于屏幕已经偏移了
-        const canvas = cc.find('Canvas');
-        const cameraOffset = this.cameraNode ? this.cameraNode.x : 0;
+        const distance = touchPos.sub(slingshotPos).mag();
         
-        // 触摸点在 Canvas 坐标系中的真实位置 = 屏幕坐标 + 摄像机偏移
-        const touchPos = canvas.convertToNodeSpaceAR(touchScreenPos);
-        touchPos.x += cameraOffset;  // 加上摄像机的偏移量
+        console.log('位置信息:');
+        console.log('   - 猴子位置:', this.monkey.x.toFixed(0), this.monkey.y.toFixed(0));
+        console.log('   - 弹弓位置:', slingshotPos.x.toFixed(0), slingshotPos.y.toFixed(0));
+        console.log('   - 触摸位置:', touchPos.x.toFixed(0), touchPos.y.toFixed(0));
+        console.log('   - 距离:', distance.toFixed(0));
         
-        console.log('📱 触摸屏幕坐标:', touchScreenPos.x.toFixed(1), touchScreenPos.y.toFixed(1));
-        console.log('📹 摄像机偏移:', cameraOffset.toFixed(1));
+        // 在弹弓附近点击才开始拖拽
+        if (distance < 150) {
+            this.isDragging = true;
+            this.dragStartPos = touchPos;
+            console.log('✅ 开始拖拽');
+        } else {
+            console.log('❌ 点击位置离弹弓太远 (>' + 150 + ')，不开始拖拽');
+        }
+        console.log('========== onTouchStart 结束 ==========');
+    },
+
+    onTouchMove(event) {
+        console.log('========== onTouchMove ==========');
+        console.log('   - isDragging:', this.isDragging);
         
-        // 弹弓位置转换为 Canvas 坐标系
-        const slingshotWorldPos = this.slingshotNode.parent.convertToWorldSpaceAR(this.slingshotNode.position);
-        const slingshotCanvasPos = canvas.convertToNodeSpaceAR(slingshotWorldPos);
+        if (!this.isDragging) {
+            console.log('❌ 未在拖拽状态，跳过');
+            return;
+        }
+        if (this.isWaterDropFlying || this.isMonkeyMoving) {
+            console.log('❌ 水滴飞行中或猴子移动中，跳过');
+            return;
+        }
         
-        console.log('🖱️ 修正后触摸(Canvas):', touchPos.x.toFixed(1), touchPos.y.toFixed(1));
-        console.log('🎯 弹弓位置(Canvas):', slingshotCanvasPos.x.toFixed(1), slingshotCanvasPos.y.toFixed(1));
+        const touchPos = this.getTouchPosInWorld(event);
         
-        // 计算拖拽方向（向左下方拖，发射往右上方）
-        let offset = touchPos.sub(slingshotCanvasPos);
+        // 【简化】弹弓位置 = 猴子位置下方50像素
+        const slingshotPos = cc.v2(this.monkey.x, this.monkey.y - 50);
         
-        console.log('📐 原始偏移:', offset.x.toFixed(1), offset.y.toFixed(1));
+        // 计算拖拽偏移
+        let offset = touchPos.sub(slingshotPos);
+        
+        console.log('拖拽计算:');
+        console.log('   - 弹弓位置:', slingshotPos.x.toFixed(0), slingshotPos.y.toFixed(0));
+        console.log('   - 触摸位置:', touchPos.x.toFixed(0), touchPos.y.toFixed(0));
+        console.log('   - 原始偏移:', offset.x.toFixed(0), offset.y.toFixed(0));
         
         // 限制拖拽距离
         const maxDistance = 150;
@@ -266,33 +270,40 @@ cc.Class({
             offset.normalizeSelf().mulSelf(maxDistance);
         }
         
-        // 限制只能向左拖
+        // 限制只能向左拖（向右发射）
         if (offset.x > 0) offset.x = 0;
-        // 注意：不限制Y，让玩家可以上下调整角度
         
-        console.log('📐 限制后偏移:', offset.x.toFixed(1), offset.y.toFixed(1));
+        console.log('   - 限制后偏移:', offset.x.toFixed(0), offset.y.toFixed(0));
         
-        // 转回坐标系保存
-        const offsetWorld = canvas.convertToWorldSpaceAR(slingshotCanvasPos.add(offset));
-        this.currentDragPos = this.slingshotNode.parent.convertToNodeSpaceAR(offsetWorld);
+        // 保存当前拖拽位置
+        this.currentDragOffset = offset;
+        this.currentDragPos = slingshotPos.add(offset);
         
-        console.log('✅ 拖拽位置已更新:', this.currentDragPos.x.toFixed(1), this.currentDragPos.y.toFixed(1));
+        // 绘制预览轨迹
+        this.drawPreviewTrajectory(offset);
+        console.log('========== onTouchMove 结束 ==========');
+    },
+    
+    // 触摸坐标转换方法
+    getTouchPosInWorld(event) {
+        const touchScreenPos = event.getLocation();
+        const canvas = cc.find('Canvas');
         
-        // 绘制预览线（前N次）
-                   this.drawPreviewTrajectory(offset);
-
+        // 转换到 Canvas 坐标系
+        // 【修改】因为不移动摄像机了，不需要加偏移
+        let touchPos = canvas.convertToNodeSpaceAR(touchScreenPos);
+        
+        console.log('📍 触摸坐标:', touchPos.x.toFixed(0), touchPos.y.toFixed(0));
+        
+        return touchPos;
     },
 
     onTouchEnd(event) {
-        console.log('TouchEnd 触发，isDragging:', this.isDragging);
-        
         if (!this.isDragging) return;
         
-        console.log('松手，准备发射');
+        console.log('🚀 松手，准备发射');
         
         this.isDragging = false;
-        
-        // 清除预览线
         this.previewLine.clear();
         
         // 发射水滴
@@ -300,68 +311,58 @@ cc.Class({
     },
 
     drawPreviewTrajectory(dragOffset) {
-        console.log('🎨 开始绘制预览轨迹');
-        console.log('🎯 弹弓位置(局部):', this.slingshotNode.position.x, this.slingshotNode.position.y);
-        console.log('📏 拖拽偏移:', dragOffset.x, dragOffset.y);
+        console.log('========== drawPreviewTrajectory ==========');
+        console.log('   - dragOffset:', dragOffset.x.toFixed(0), dragOffset.y.toFixed(0));
         
         this.previewLine.clear();
-        this.previewLine.strokeColor = cc.Color.BLUE.fromHEX('#00BFFF');
+        this.previewLine.strokeColor = cc.color(0, 191, 255); // 天蓝色
         this.previewLine.lineWidth = 3;
         
         // 计算发射速度
         const velocity = dragOffset.mul(-this.launchPower);
         
-        console.log('🚀 发射速度:', velocity.x, velocity.y);
+        // 【简化】直接用猴子位置，因为 PreviewLine 和猴子在同一个父节点下
+        // 弹弓在猴子下方 50 像素
+        let pos = cc.v2(this.monkey.x, this.monkey.y - 50);
         
-        // 转换为 Canvas 坐标系（因为 PreviewLine 在 Canvas 下）
-        const canvas = cc.find('Canvas');
-        const slingshotWorldPos = this.slingshotNode.parent.convertToWorldSpaceAR(this.slingshotNode.position);
-        let pos = canvas.convertToNodeSpaceAR(slingshotWorldPos);
-        
-        console.log('🎯 绘制起点(Canvas):', pos.x, pos.y);
+        console.log('   - 猴子位置:', this.monkey.x.toFixed(0), this.monkey.y.toFixed(0));
+        console.log('   - 绘制起点:', pos.x.toFixed(0), pos.y.toFixed(0));
+        console.log('   - 发射速度:', velocity.x.toFixed(0), velocity.y.toFixed(0));
         
         // 模拟轨迹
-        const steps = 50;
+        const steps = 60;
         const dt = 0.05;
+        const gravity = cc.director.getPhysicsManager().gravity.y;
+        
+        let vel = velocity.clone();
         
         this.previewLine.moveTo(pos.x, pos.y);
         
-        let pointCount = 0;
         for (let i = 0; i < steps; i++) {
-            velocity.y += cc.director.getPhysicsManager().gravity.y * dt;
-            pos.x += velocity.x * dt;
-            pos.y += velocity.y * dt;
+            vel.y += gravity * dt;
+            pos.x += vel.x * dt;
+            pos.y += vel.y * dt;
             
             this.previewLine.lineTo(pos.x, pos.y);
-            pointCount++;
             
-            // 如果低于地面就停止
-            if (pos.y < -300) break;
+            // 低于地面停止
+            if (pos.y < -350) break;
         }
         
         this.previewLine.stroke();
-        console.log('✅ 预览线绘制完成，点数:', pointCount);
+        console.log('   - 绘制终点:', pos.x.toFixed(0), pos.y.toFixed(0));
+        console.log('========== drawPreviewTrajectory 结束 ==========');
     },
 
     launchWaterDrop() {
-        console.log('🚀🚀🚀 准备发射水滴');
-        console.log('   - 当前发射次数:', this.currentShotCount);
-        console.log('   - 即将成为第', this.currentShotCount + 1, '次发射');
-        console.log('   - isWaterDropFlying:', this.isWaterDropFlying);
-        console.log('   - isMonkeyMoving:', this.isMonkeyMoving);
-        console.log('   - isDragging:', this.isDragging);
+        console.log('🚀 发射水滴');
         
-        // 先清空旧的路径线
+        // 清空旧路径
         this.pathLine.clear();
+        this.pathPoints = [];
         
         this.isWaterDropFlying = true;
         this.currentShotCount++;
-        
-        // 在发射前彻底清空路径点数组
-        this.pathPoints = [];
-        
-        console.log('发射水滴前清空路径点，数量:', this.pathPoints.length);
-        console.log('✅ 发射水滴，当前发射次数:', this.currentShotCount);
         
         // 创建水滴
         const waterDrop = cc.instantiate(this.waterDropPrefab);
@@ -369,82 +370,75 @@ cc.Class({
         waterDrop.position = this.slingshotNode.position.clone();
         
         // 计算发射速度
-        const dragOffset = this.currentDragPos.sub(this.slingshotNode.position);
+        const dragOffset = this.currentDragOffset || cc.v2(-50, 50);
         const velocity = dragOffset.mul(-this.launchPower);
         
-        // 获取刚体并施加力
+        // 获取刚体并设置速度
         const rigidBody = waterDrop.getComponent(cc.RigidBody);
-        rigidBody.linearVelocity = velocity;
+        if (rigidBody) {
+            rigidBody.linearVelocity = velocity;
+        }
         
         // 保存水滴引用
         this.currentWaterDrop = waterDrop;
         const waterDropScript = waterDrop.getComponent('WaterDrop');
-        waterDropScript.gameManager = this;
+        if (waterDropScript) {
+            waterDropScript.gameManager = this;
+        }
         
         // 记录轨迹
         this.recordTrajectory(waterDrop);
-        
-        console.log('发射水滴，当前发射次数:', this.currentShotCount);
         
         this.updateUI();
     },
 
     recordTrajectory(waterDrop) {
-        console.log('准备记录轨迹，当前弹弓位置:', this.slingshotNode.position);
-        
-        // 停止之前的轨迹记录（如果有）
+        // 停止之前的轨迹记录
         if (this.trajectoryTimer) {
             this.unschedule(this.trajectoryTimer);
             this.trajectoryTimer = null;
         }
         
-        // 手动添加起始点（弹弓位置）
+        // 添加起始点
         this.pathPoints.push(this.slingshotNode.position.clone());
         
-        // 延迟一小段时间再开始记录，避免第一帧数据异常
+        // 定时记录水滴位置
         this.scheduleOnce(() => {
-            // 定义记录函数
             const recordFunc = () => {
                 if (waterDrop && waterDrop.isValid && !this.isMonkeyMoving) {
                     const pos = waterDrop.position.clone();
-                    // 过滤异常点（Y坐标过小）
-                    if (pos.y > -1000) {
+                    if (pos.y > -500) {
                         this.pathPoints.push(pos);
                     }
                 }
             };
             
-            // 每帧记录水滴位置
             this.trajectoryTimer = this.schedule(recordFunc, 0.03);
-        }, 0.05);  // 延迟 0.05 秒开始记录
+        }, 0.05);
     },
 
     onWaterDropLanded(landedOnPillar, landPos) {
         this.isWaterDropFlying = false;
         
-        // 只停止轨迹记录定时器，不停止所有定时器
+        // 停止轨迹记录
         if (this.trajectoryTimer) {
             this.unschedule(this.trajectoryTimer);
             this.trajectoryTimer = null;
         }
         
-        console.log('水滴落地，命中:', landedOnPillar, '路径点数量:', this.pathPoints.length);
+        console.log('💧 水滴落地，命中柱子:', landedOnPillar, '路径点数:', this.pathPoints.length);
         
         if (landedOnPillar) {
-            // 成功落在柱子顶部
+            // 成功命中柱子顶部
             this.score += 100;
             this.updateUI();
             
-            // 找到水滴落在哪个柱子上
+            // 找到目标柱子
             let targetPillar = null;
             for (let i = 0; i < this.pillars.length; i++) {
                 const pillar = this.pillars[i];
                 if (!pillar || !pillar.isValid) continue;
                 
-                const pillarScript = pillar.getComponent('Pillar');
-                if (!pillarScript) continue;
-                
-                // 检查水滴是否在这个柱子上
                 if (Math.abs(landPos.x - pillar.x) < 60) {
                     targetPillar = pillar;
                     break;
@@ -453,97 +447,84 @@ cc.Class({
             
             if (targetPillar) {
                 const pillarScript = targetPillar.getComponent('Pillar');
-                // 计算猴子的目标位置：柱子顶部 + 一定高度
-                const targetY = targetPillar.y + pillarScript.pillarHeight + 150;  // 站在顶部上方150像素
-                const finalTargetPos = cc.v2(landPos.x, targetY);
+                // 【修改】猴子目标位置：站在 topNode 上面
+                // topNode 的 Y 位置 = pillar.y + pillarHeight
+                // topNode 高度是 20，所以顶部是 topNode.y + 10
+                // 猴子站在 topNode 顶部，再加上猴子高度的一半（假设猴子高度约50）
+                const topNodeY = targetPillar.y + pillarScript.pillarHeight;
+                const topNodeHalfHeight = 10;  // topNode 高度20的一半
+                const monkeyHalfHeight = 100;   // 【修改】猴子高度的一半，从25改为100
+                const targetY = topNodeY + topNodeHalfHeight + monkeyHalfHeight;
+                const finalTargetPos = cc.v2(targetPillar.x, targetY);
                 
-                console.log('目标柱子位置:', targetPillar.position, '高度:', pillarScript.pillarHeight);
-                console.log('猴子目标位置:', finalTargetPos);
+                console.log('🎯 目标位置:', finalTargetPos);
                 
                 // 绘制路径
                 this.drawPath();
                 
-                // 延迟一下再移动猴子，确保路径绘制完成
+                // 移动猴子
                 this.scheduleOnce(() => {
                     this.moveMonkeyAlongPath(finalTargetPos);
                 }, 0.1);
-            } else {
-                console.error('找不到目标柱子！');
             }
         } else {
-            // 没有落在柱子顶部，可以继续发射（不算失败）
-            console.log('没打中，再试一次！');
-            // 清空路径点，准备下一次发射
+            // 没命中，清空路径点，可以继续发射
+            console.log('❌ 未命中，再试一次');
             this.pathPoints = [];
-            // 如果要恢复失败判定，取消下面这行的注释：
-            // this.gameOver();
         }
     },
 
     drawPath() {
-        console.log('开始绘制路径，路径点数量:', this.pathPoints.length);
+        console.log('🛤️ 绘制路径，点数:', this.pathPoints.length);
         
-        if (!this.pathLine) {
-            console.error('PathLine 节点不存在！');
-            return;
-        }
+        if (!this.pathLine) return;
         
         this.pathLine.clear();
         this.pathLine.strokeColor = cc.Color.GREEN;
         this.pathLine.lineWidth = 8;
         
+        // 【简化】PathLine 和 pathPoints 都在 GameManager 坐标系下，直接画
         if (this.pathPoints.length > 1) {
-            // 转换为 Canvas 坐标系（因为 PathLine 在 Canvas 下）
-            const canvas = cc.find('Canvas');
-            const canvasPoints = [];
+            this.pathLine.moveTo(this.pathPoints[0].x, this.pathPoints[0].y);
             
-            for (let i = 0; i < this.pathPoints.length; i++) {
-                // pathPoints 是在 GameManager 坐标系下的
-                const worldPos = this.node.convertToWorldSpaceAR(this.pathPoints[i]);
-                const canvasPos = canvas.convertToNodeSpaceAR(worldPos);
-                canvasPoints.push(canvasPos);
-            }
-            
-            console.log('第一个点(Canvas):', canvasPoints[0].x, canvasPoints[0].y);
-            console.log('最后一个点(Canvas):', canvasPoints[canvasPoints.length - 1].x, canvasPoints[canvasPoints.length - 1].y);
-            
-            this.pathLine.moveTo(canvasPoints[0].x, canvasPoints[0].y);
-            
-            for (let i = 1; i < canvasPoints.length; i++) {
-                this.pathLine.lineTo(canvasPoints[i].x, canvasPoints[i].y);
+            for (let i = 1; i < this.pathPoints.length; i++) {
+                this.pathLine.lineTo(this.pathPoints[i].x, this.pathPoints[i].y);
             }
             
             this.pathLine.stroke();
-            console.log('路径绘制完成');
-        } else {
-            console.warn('路径点不足，无法绘制，当前点数:', this.pathPoints.length);
         }
     },
 
     moveMonkeyAlongPath(targetPos) {
         if (this.pathPoints.length === 0) {
-            console.error('没有路径点，无法移动猴子');
+            console.error('没有路径点');
             return;
         }
         
-        console.log('猴子开始移动，路径点数量:', this.pathPoints.length);
+        console.log('🐵 猴子开始移动到:', targetPos.x.toFixed(0), targetPos.y.toFixed(0));
         
         this.isMonkeyMoving = true;
         
-        // 计算路径总时间
         const duration = 2.0;
         
-        // 计算摄像机需要移动的距离
-        const startMonkeyX = this.monkey.x;
-        const endMonkeyX = targetPos.x;
-        const cameraMoveDistance = endMonkeyX - startMonkeyX;
+        // 计算需要移动的距离
+        const monkeyStartX = this.monkey.x;
+        const moveDistance = targetPos.x - monkeyStartX;
         
-        // 创建移动动作
+        console.log('移动距离:', moveDistance.toFixed(0));
+        
+        // 【新增】摄像机平滑跟随猴子移动
+        if (this.cameraNode) {
+            const cameraTargetX = this.cameraNode.x + moveDistance;
+            const cameraAction = cc.moveTo(duration, cameraTargetX, this.cameraNode.y).easing(cc.easeInOut(2.0));
+            this.cameraNode.runAction(cameraAction);
+        }
+        
+        // 创建猴子移动动作（猴子沿路径走）
         const moveAction = cc.sequence(
             cc.spawn(
-                // 沿路径移动
                 this.createPathFollowAction(duration),
-                // 播放行走动画（如果有）
+                // 行走动画
                 cc.repeat(
                     cc.sequence(
                         cc.scaleTo(0.1, 1.1, 0.9),
@@ -554,63 +535,80 @@ cc.Class({
                 )
             ),
             cc.callFunc(() => {
-                console.log('猴子到达目标位置:', targetPos);
-                
-                // 更新猴子位置
-                this.monkey.position = targetPos.clone();
-                
-                // 更新弹弓位置到猴子下方
-                this.slingshotNode.position = targetPos.clone().add(cc.v2(0, -50));
-                
-                // 保存新的起始位置
-                this.monkeyStartPos = this.monkey.position.clone();
-                this.slingshotPos = this.slingshotNode.position.clone();
-                
-                console.log('新的弹弓位置:', this.slingshotNode.position);
-                console.log('重置状态：isMonkeyMoving = false, isWaterDropFlying = false');
-                
-                // 确保状态重置
-                this.isMonkeyMoving = false;
-                this.isWaterDropFlying = false;  // 确保这个也重置
-                this.isDragging = false;  // 确保拖拽状态重置
-                
-                // 第一次移动后，开始摄像机跟随
-                this.shouldFollowMonkey = true;
-                
-                // 立即清空路径点，为下一次发射做准备
-                this.pathPoints = [];
-                
-                // 延迟清空路径线的绘制
-                this.scheduleOnce(() => {
-                    this.pathLine.clear();
-                }, 0.5);
-                
-                // 移除已经过的柱子，生成新柱子
-                this.updatePillars(targetPos.x);
-                
-                // 不再重新绑定触摸事件，避免 TOUCH_START 丢失
-                // this.scheduleOnce(() => {
-                //     this.bindTouchEvents();
-                //     console.log('触摸事件重新绑定完成');
-                // }, 0.1);
+                // 猴子到达后，把整个世界往左移动，让猴子回到屏幕左侧
+                this.shiftWorldLeft(moveDistance, targetPos);
             })
         );
         
-        // 如果已经开始跟随，同时移动摄像机（使用缓动）
-        if (this.shouldFollowMonkey && this.cameraNode) {
-            const cameraStartX = this.cameraNode.x;
-            const cameraEndX = cameraStartX + cameraMoveDistance;
-            
-            // 使用 easeInOut 缓动，让移动更丝滑
-            const cameraAction = cc.moveTo(duration, cameraEndX, this.cameraNode.y).easing(cc.easeInOut(2.0));
-            this.cameraNode.runAction(cameraAction);
+        this.monkey.runAction(moveAction);
+    },
+    
+    // 把整个世界往左移动
+    shiftWorldLeft(distance, monkeyTargetPos) {
+        console.log('🌍 移动世界，距离:', distance.toFixed(0));
+        
+        // 移动猴子
+        this.monkey.x -= distance;
+        
+        // 移动所有柱子
+        for (let i = 0; i < this.pillars.length; i++) {
+            if (this.pillars[i] && this.pillars[i].isValid) {
+                this.pillars[i].x -= distance;
+            }
         }
         
-        this.monkey.runAction(moveAction);
+        // 移动弹弓节点
+        this.slingshotNode.x -= distance;
+        
+        // 移动路径点
+        for (let i = 0; i < this.pathPoints.length; i++) {
+            this.pathPoints[i].x -= distance;
+        }
+        
+        // 【关键】把摄像机也移回原位（瞬间移动，因为世界整体左移了，视觉上无变化）
+        if (this.cameraNode) {
+            this.cameraNode.x = this.initialCameraX;
+        }
+        
+        // 重新绘制路径（因为坐标变了）
+        this.drawPath();
+        
+        // 调用到达处理
+        const newMonkeyPos = cc.v2(monkeyTargetPos.x - distance, monkeyTargetPos.y);
+        this.onMonkeyArrived(newMonkeyPos);
+    },
+    
+    // 【新增】猴子到达目标后的处理
+    onMonkeyArrived(targetPos) {
+        console.log('🐵 猴子到达:', targetPos.x.toFixed(0), targetPos.y.toFixed(0));
+        
+        // 更新猴子位置
+        this.monkey.position = targetPos.clone();
+        
+        // 更新弹弓位置（在猴子下方50像素）
+        this.slingshotNode.position = cc.v2(targetPos.x, targetPos.y - 50);
+        
+        // 保存新位置
+        this.monkeyStartPos = this.monkey.position.clone();
+        
+        // 重置状态
+        this.isMonkeyMoving = false;
+        this.isWaterDropFlying = false;
+        this.isDragging = false;
+        this.pathPoints = [];
+        
+        // 延迟清空路径线
+        this.scheduleOnce(() => {
+            this.pathLine.clear();
+        }, 0.5);
+        
+        // 更新柱子（删除旧的，生成新的）
+        this.updatePillars(targetPos.x);
+        
+        console.log('✅ 状态重置完成，猴子位置:', this.monkey.x.toFixed(0), this.monkey.y.toFixed(0));
     },
 
     createPathFollowAction(duration) {
-        // 创建沿路径移动的动作
         const actions = [];
         const pointCount = this.pathPoints.length;
         
@@ -628,17 +626,21 @@ cc.Class({
     },
 
     updatePillars(monkeyX) {
-        // 删除屏幕外左边很远的柱子（节省性能）
-        const cameraX = this.cameraNode ? this.cameraNode.x : 0;
+        console.log('========== 更新柱子 ==========');
+        console.log('猴子X:', monkeyX.toFixed(0));
+        console.log('当前柱子数量:', this.pillars.length);
+        
+        // 【修改】删除猴子左边很远的柱子（因为不移动摄像机了，直接用猴子位置判断）
         this.pillars = this.pillars.filter(pillar => {
-            if (pillar.x < cameraX - 800) {  // 在摄像机左边800像素外的删除
+            if (pillar.x < monkeyX - 500) {
+                console.log('🗑️ 删除旧柱子，位置:', pillar.x.toFixed(0));
                 pillar.destroy();
                 return false;
             }
             return true;
         });
         
-        // 生成新柱子（保持前方有足够的柱子）
+        // 生成新柱子（保持前方有足够柱子）
         while (this.pillars.length < 8) {
             const lastPillar = this.pillars[this.pillars.length - 1];
             const lastX = lastPillar ? lastPillar.x : monkeyX;
@@ -658,14 +660,14 @@ cc.Class({
             
             this.pillars.push(pillar);
             
-            console.log('生成新柱子，总数:', this.pillars.length);
+            console.log('🏛️ 新柱子 | 间距:', distance.toFixed(0), '| 位置X:', pillar.x.toFixed(0));
         }
+        console.log('========== 柱子更新完成，总数:', this.pillars.length, '==========');
     },
 
     gameOver() {
-        console.log('游戏结束！得分：' + this.score);
+        console.log('💀 游戏结束，得分:', this.score);
         
-        // 显示游戏结束UI（可以后续添加）
         this.scheduleOnce(() => {
             this.restartGame();
         }, 2);
@@ -683,27 +685,33 @@ cc.Class({
         this.pathLine.clear();
         this.previewLine.clear();
         
+        // 重置摄像机
+        this.cameraNode.x = this.initialCameraX;
+        
         // 重置变量
         this.currentShotCount = 0;
         this.score = 0;
-        this.slingshotNode.position = cc.v2(-400, -200);
         
         // 重新初始化
         this.initGame();
     },
 
     updateUI() {
-        this.shotCountLabel.string = '发射次数: ' + this.currentShotCount;
-        this.scoreLabel.string = '得分: ' + this.score;
+        if (this.shotCountLabel) {
+            this.shotCountLabel.string = '发射: ' + this.currentShotCount;
+        }
+        if (this.scoreLabel) {
+            this.scoreLabel.string = '得分: ' + this.score;
+        }
     },
 
     onDestroy() {
-        // 移除触摸监听
+        // 移除触摸事件
         if (this.canvas) {
-            this.canvas.off(cc.Node.EventType.TOUCH_START, this.onTouchStart, this);
-            this.canvas.off(cc.Node.EventType.TOUCH_MOVE, this.onTouchMove, this);
-            this.canvas.off(cc.Node.EventType.TOUCH_END, this.onTouchEnd, this);
-            this.canvas.off(cc.Node.EventType.TOUCH_CANCEL, this.onTouchEnd, this);
+            this.canvas.off(cc.Node.EventType.TOUCH_START, this._touchStartHandler);
+            this.canvas.off(cc.Node.EventType.TOUCH_MOVE, this._touchMoveHandler);
+            this.canvas.off(cc.Node.EventType.TOUCH_END, this._touchEndHandler);
+            this.canvas.off(cc.Node.EventType.TOUCH_CANCEL, this._touchEndHandler);
         }
     }
 });

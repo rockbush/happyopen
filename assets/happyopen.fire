@@ -15,6 +15,9 @@
     "_children": [
       {
         "__id__": 2
+      },
+      {
+        "__id__": 23
       }
     ],
     "_active": false,
@@ -75,13 +78,13 @@
         "__id__": 5
       },
       {
+        "__id__": 7
+      },
+      {
         "__id__": 14
       },
       {
         "__id__": 16
-      },
-      {
-        "__id__": 7
       },
       {
         "__id__": 11
@@ -155,7 +158,7 @@
       "__id__": 2
     },
     "_children": [],
-    "_active": true,
+    "_active": false,
     "_components": [
       {
         "__id__": 4
@@ -243,7 +246,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "GameManager",
+    "_name": "Slingshot",
     "_objFlags": 0,
     "_parent": {
       "__id__": 2
@@ -266,107 +269,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 0,
-      "height": 0
-    },
-    "_anchorPoint": {
-      "__type__": "cc.Vec2",
-      "x": 0.5,
-      "y": 0.5
-    },
-    "_trs": {
-      "__type__": "TypedArray",
-      "ctor": "Float64Array",
-      "array": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        1,
-        1,
-        1
-      ]
-    },
-    "_eulerAngles": {
-      "__type__": "cc.Vec3",
-      "x": 0,
-      "y": 0,
-      "z": 0
-    },
-    "_skewX": 0,
-    "_skewY": 0,
-    "_is3DNode": false,
-    "_groupIndex": 0,
-    "groupIndex": 0,
-    "_id": "b95hgEOi1AHJ+CQuYWmETB"
-  },
-  {
-    "__type__": "7fc288KOWpPa7sxBBzJFxxh",
-    "_name": "",
-    "_objFlags": 0,
-    "node": {
-      "__id__": 5
-    },
-    "_enabled": true,
-    "monkeyPrefab": {
-      "__uuid__": "5efa9758-8ca1-43f7-bfe0-2e90dcb03506"
-    },
-    "waterDropPrefab": {
-      "__uuid__": "aef5f364-1f06-44f3-931c-87dc5eebe721"
-    },
-    "pillarPrefab": {
-      "__uuid__": "d2bd5741-6a21-4cca-9bbb-f58c9d2c09e7"
-    },
-    "slingshotNode": {
-      "__id__": 7
-    },
-    "previewLine": null,
-    "pathLine": null,
-    "minPillarDistance": 100,
-    "maxPillarDistance": 400,
-    "minPillarHeight": 100,
-    "maxPillarHeight": 150,
-    "pillarWidth": 80,
-    "launchPower": 5,
-    "previewShotCount": 3,
-    "shotCountLabel": {
-      "__id__": 9
-    },
-    "scoreLabel": {
-      "__id__": 13
-    },
-    "_id": "d8vBrmjPJIWbSIIKdZQymF"
-  },
-  {
-    "__type__": "cc.Node",
-    "_name": "Slingshot",
-    "_objFlags": 0,
-    "_parent": {
-      "__id__": 2
-    },
-    "_children": [],
-    "_active": true,
-    "_components": [
-      {
-        "__id__": 8
-      }
-    ],
-    "_prefab": null,
-    "_opacity": 255,
-    "_color": {
-      "__type__": "cc.Color",
-      "r": 255,
-      "g": 255,
-      "b": 255,
-      "a": 255
-    },
-    "_contentSize": {
-      "__type__": "cc.Size",
-      "width": 109,
-      "height": 211
+      "width": 100,
+      "height": 100
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -407,7 +311,7 @@
     "_name": "",
     "_objFlags": 0,
     "node": {
-      "__id__": 7
+      "__id__": 5
     },
     "_enabled": true,
     "_materials": [
@@ -418,7 +322,7 @@
     "_srcBlendFactor": 770,
     "_dstBlendFactor": 771,
     "_spriteFrame": {
-      "__uuid__": "5941fb4b-7546-4e04-9263-2371235c7b4e"
+      "__uuid__": "8b4cd3fd-06e2-4495-9863-26203c9d799f"
     },
     "_type": 0,
     "_sizeMode": 1,
@@ -433,6 +337,105 @@
     "_isTrimmedMode": true,
     "_atlas": null,
     "_id": "82WLhvgi1Mpak83WW9aYNI"
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "GameManager",
+    "_objFlags": 0,
+    "_parent": {
+      "__id__": 2
+    },
+    "_children": [],
+    "_active": true,
+    "_components": [
+      {
+        "__id__": 8
+      }
+    ],
+    "_prefab": null,
+    "_opacity": 255,
+    "_color": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 255,
+      "b": 255,
+      "a": 255
+    },
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 10000,
+      "height": 5000
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0.5,
+      "y": 0.5
+    },
+    "_trs": {
+      "__type__": "TypedArray",
+      "ctor": "Float64Array",
+      "array": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "_eulerAngles": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_skewX": 0,
+    "_skewY": 0,
+    "_is3DNode": false,
+    "_groupIndex": 0,
+    "groupIndex": 0,
+    "_id": "b95hgEOi1AHJ+CQuYWmETB"
+  },
+  {
+    "__type__": "7fc288KOWpPa7sxBBzJFxxh",
+    "_name": "",
+    "_objFlags": 0,
+    "node": {
+      "__id__": 7
+    },
+    "_enabled": true,
+    "monkeyPrefab": {
+      "__uuid__": "5efa9758-8ca1-43f7-bfe0-2e90dcb03506"
+    },
+    "waterDropPrefab": {
+      "__uuid__": "aef5f364-1f06-44f3-931c-87dc5eebe721"
+    },
+    "pillarPrefab": {
+      "__uuid__": "d2bd5741-6a21-4cca-9bbb-f58c9d2c09e7"
+    },
+    "slingshotNode": {
+      "__id__": 5
+    },
+    "previewLine": null,
+    "pathLine": null,
+    "minPillarDistance": 100,
+    "maxPillarDistance": 400,
+    "minPillarHeight": 100,
+    "maxPillarHeight": 150,
+    "pillarWidth": 80,
+    "launchPower": 5,
+    "monkeyScreenOffsetX": 100,
+    "shotCountLabel": {
+      "__id__": 9
+    },
+    "scoreLabel": {
+      "__id__": 13
+    },
+    "_id": "d8vBrmjPJIWbSIIKdZQymF"
   },
   {
     "__type__": "cc.Label",
@@ -1009,5 +1012,86 @@
     },
     "_miterLimit": 10,
     "_id": "7b8ojnqtdJx69/jCC6PEmv"
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "houzi",
+    "_objFlags": 0,
+    "_parent": {
+      "__id__": 1
+    },
+    "_children": [],
+    "_active": false,
+    "_components": [
+      {
+        "__id__": 24
+      }
+    ],
+    "_prefab": null,
+    "_opacity": 255,
+    "_color": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 255,
+      "b": 255,
+      "a": 255
+    },
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 0,
+      "height": 0
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0.5,
+      "y": 0.5
+    },
+    "_trs": {
+      "__type__": "TypedArray",
+      "ctor": "Float64Array",
+      "array": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "_eulerAngles": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_skewX": 0,
+    "_skewY": 0,
+    "_is3DNode": false,
+    "_groupIndex": 0,
+    "groupIndex": 0,
+    "_id": "adG1y960ZB7pdSy5YnFh9j"
+  },
+  {
+    "__type__": "cc.Animation",
+    "_name": "",
+    "_objFlags": 0,
+    "node": {
+      "__id__": 23
+    },
+    "_enabled": true,
+    "_defaultClip": {
+      "__uuid__": "43321fef-293d-4bdf-8a03-72635a4105b9"
+    },
+    "_clips": [
+      {
+        "__uuid__": "43321fef-293d-4bdf-8a03-72635a4105b9"
+      }
+    ],
+    "playOnLoad": false,
+    "_id": "4dHpXAV6JAYopqoKDDv5cw"
   }
 ]

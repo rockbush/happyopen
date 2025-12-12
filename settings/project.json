@@ -2,7 +2,7 @@
   "migrate-history": [
     "cloud-function"
   ],
-  "start-scene": "46aff18a-0acc-4c9a-bdbe-395d0d3d95c9",
+  "start-scene": "f11ab8da-07c3-4cd4-a901-1bc4aab18bed",
   "group-list": [
     "waterdrop",
     "pillar",
@@ -29,9 +29,9 @@
     "3D Physics/Builtin"
   ],
   "preview-port": 7456,
-  "design-resolution-width": 960,
-  "design-resolution-height": 640,
-  "fit-width": false,
+  "design-resolution-width": 1024,
+  "design-resolution-height": 576,
+  "fit-width": true,
   "fit-height": true,
   "use-project-simulator-setting": false,
   "simulator-orientation": false,
