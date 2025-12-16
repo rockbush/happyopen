@@ -35,6 +35,9 @@ cc.Class({
         // 【新增】无限背景节点
         infiniteBackground: cc.Node,
         
+        // 【新增】彩虹路径节点
+        rainbowPath: cc.Node,
+        
         // 【新增】调试模式：允许拖拽查看场景
         debugCameraDrag: {
             default: true,
@@ -553,6 +556,18 @@ cc.Class({
     },
 
     drawPath() {
+        console.log('🛤️ 绘制路径，点数:', this.pathPoints.length);
+        
+        // 使用彩虹路径绘制
+        if (this.rainbowPath) {
+            const rainbowScript = this.rainbowPath.getComponent('RainbowPath');
+            if (rainbowScript) {
+                rainbowScript.setPath(this.pathPoints);
+                return;
+            }
+        }
+        
+        // 如果没有彩虹路径，使用原来的绿色线条
         if (!this.pathLine) return;
         
         this.pathLine.clear();
@@ -640,6 +655,14 @@ cc.Class({
             }
         }
         
+        // 【新增】通知彩虹路径也左移
+        if (this.rainbowPath) {
+            const rainbowScript = this.rainbowPath.getComponent('RainbowPath');
+            if (rainbowScript) {
+                rainbowScript.shiftLeft(distance);
+            }
+        }
+        
         if (this.cameraNode) {
             this.cameraNode.x = this.initialCameraX;
         }
@@ -666,6 +689,13 @@ cc.Class({
         
         this.scheduleOnce(() => {
             this.pathLine.clear();
+            // 清除彩虹路径
+            if (this.rainbowPath) {
+                const rainbowScript = this.rainbowPath.getComponent('RainbowPath');
+                if (rainbowScript) {
+                    rainbowScript.clear();
+                }
+            }
         }, 0.5);
         
         this.updatePillars(targetPos.x);
