@@ -46,8 +46,8 @@ cc.Class({
         
         // 【新增】摄像机拖拽灵敏度
         cameraDragSensitivity: {
-            default: 1.0,
-            tooltip: '摄像机拖拽灵敏度'
+            default: 0.6,
+            tooltip: '摄像机拖拽灵敏度，越小移动越慢'
         },
         
         // 【新增】惯性衰减系数（越小惯性越大）
@@ -187,21 +187,19 @@ cc.Class({
     
     // 【新增】每帧更新，处理摄像机惯性
     update(dt) {
-        // 如果有惯性速度，继续移动摄像机
-        if (!this.isCameraDragging && (Math.abs(this.cameraVelocity.x) > 0.5 || Math.abs(this.cameraVelocity.y) > 0.5)) {
+        // 如果有惯性速度，继续移动摄像机（只处理X轴）
+        if (!this.isCameraDragging && Math.abs(this.cameraVelocity.x) > 0.5) {
             this.cameraNode.x += this.cameraVelocity.x;
-            this.cameraNode.y += this.cameraVelocity.y;
             
             // 衰减速度
             this.cameraVelocity.x *= this.cameraInertiaDecay;
-            this.cameraVelocity.y *= this.cameraInertiaDecay;
             
-            // 限制摄像机范围（可选）
+            // 限制摄像机范围
             this.clampCameraPosition();
         }
     },
     
-    // 限制摄像机位置范围
+    // 限制摄像机位置范围（只限制X轴）
     clampCameraPosition() {
         // 找到最远的柱子
         let maxX = 0;
@@ -222,18 +220,6 @@ cc.Class({
         if (this.cameraNode.x > maxCameraX) {
             this.cameraNode.x = maxCameraX;
             this.cameraVelocity.x = 0;
-        }
-        
-        // Y轴限制
-        const minCameraY = -200;
-        const maxCameraY = 300;
-        if (this.cameraNode.y < minCameraY) {
-            this.cameraNode.y = minCameraY;
-            this.cameraVelocity.y = 0;
-        }
-        if (this.cameraNode.y > maxCameraY) {
-            this.cameraNode.y = maxCameraY;
-            this.cameraVelocity.y = 0;
         }
     },
 
@@ -353,16 +339,16 @@ cc.Class({
         // 拖拽摄像机
         if (this.isCameraDragging && this.debugCameraDrag) {
             const deltaX = (this.cameraDragStartPos.x - currentPos.x) * this.cameraDragSensitivity;
-            const deltaY = (this.cameraDragStartPos.y - currentPos.y) * this.cameraDragSensitivity;
+            // 【修改】只允许水平移动，不改变Y轴
             
             this.cameraNode.x = this.cameraStartX + deltaX;
-            this.cameraNode.y = this.cameraStartY + deltaY;
+            // this.cameraNode.y 保持不变
             
-            // 计算速度（用于惯性）
+            // 计算速度（用于惯性），只计算X轴
             if (this.lastTouchPos && currentTime - this.lastTouchTime > 0) {
                 const dt = (currentTime - this.lastTouchTime) / 1000;
                 this.cameraVelocity.x = (this.lastTouchPos.x - currentPos.x) * this.cameraDragSensitivity / dt * 0.016;
-                this.cameraVelocity.y = (this.lastTouchPos.y - currentPos.y) * this.cameraDragSensitivity / dt * 0.016;
+                this.cameraVelocity.y = 0;  // Y轴速度始终为0
             }
             
             this.lastTouchPos = currentPos;
