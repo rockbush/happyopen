@@ -32,6 +32,9 @@ cc.Class({
         shotCountLabel: cc.Label,
         scoreLabel: cc.Label,
         
+        // 【新增】无限背景节点
+        infiniteBackground: cc.Node,
+        
         // 【新增】调试模式：允许拖拽查看场景
         debugCameraDrag: {
             default: true,
@@ -627,6 +630,14 @@ cc.Class({
         
         for (let i = 0; i < this.pathPoints.length; i++) {
             this.pathPoints[i].x -= distance;
+        }
+        
+        // 【新增】通知背景也左移
+        if (this.infiniteBackground) {
+            const bgScript = this.infiniteBackground.getComponent('InfiniteBackground');
+            if (bgScript) {
+                bgScript.shiftLeft(distance);
+            }
         }
         
         if (this.cameraNode) {
