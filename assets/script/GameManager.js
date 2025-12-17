@@ -38,6 +38,9 @@ cc.Class({
         // 【新增】彩虹路径节点
         rainbowPath: cc.Node,
         
+        // 【新增】拖拽指示器节点
+        dragIndicator: cc.Node,
+        
         // 【新增】调试模式：允许拖拽查看场景
         debugCameraDrag: {
             default: true,
@@ -334,6 +337,11 @@ cc.Class({
             this.cameraDragStartPos = event.getLocation();
             this.cameraStartX = this.cameraNode.x;
             this.cameraStartY = this.cameraNode.y;
+            // 显示拖拽指示器
+            if (this.dragIndicator) {
+                const script = this.dragIndicator.getComponent('DragIndicator');
+                if (script) script.show(this.cameraDragStartPos);
+            }
             console.log('📷 开始拖拽摄像机');
         }
     },
@@ -405,6 +413,11 @@ cc.Class({
             console.log('📷 结束摄像机拖拽，惯性速度:', this.cameraVelocity.x.toFixed(1), this.cameraVelocity.y.toFixed(1));
             this.isCameraDragging = false;
             this.cameraDragStartPos = null;
+            // 隐藏拖拽指示器
+            if (this.dragIndicator) {
+                const script = this.dragIndicator.getComponent('DragIndicator');
+                if (script) script.hide();
+            }
             return;
         }
         
