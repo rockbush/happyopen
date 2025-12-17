@@ -29,7 +29,6 @@ cc.Class({
         monkeyScreenOffsetX: 100,
         
         // UI
-        shotCountLabel: cc.Label,
         scoreLabel: cc.Label,
         
         // 【新增】无限背景节点
@@ -40,6 +39,9 @@ cc.Class({
         
         // 【新增】拖拽指示器节点
         dragIndicator: cc.Node,
+        
+        // 【新增】弹弓拖拽指示器节点
+        slingshotIndicator: cc.Node,
         
         // 【新增】调试模式：允许拖拽查看场景
         debugCameraDrag: {
@@ -287,7 +289,7 @@ cc.Class({
             pillar.parent = this.node;
             
             const x = lastX + distance;
-            const y = -300;
+            const y = -360;
             pillar.position = cc.v2(x, y);
             
             const pillarScript = pillar.getComponent('Pillar');
@@ -328,6 +330,11 @@ cc.Class({
             this.isDragging = true;
             this.isCameraDragging = false;
             this.dragStartPos = touchPos;
+            // 显示弹弓拖拽指示器
+            if (this.slingshotIndicator) {
+                const script = this.slingshotIndicator.getComponent('SlingshotIndicator');
+                if (script) script.showDragging(touchPos);
+            }
             console.log('🎯 开始拖拽弹弓');
         } 
         // 否则，如果调试模式开启，开始拖拽摄像机
@@ -391,6 +398,12 @@ cc.Class({
         this.currentDragOffset = offset;
         this.currentDragPos = slingshotPos.add(offset);
         
+        // 更新弹弓拖拽指示器位置
+        if (this.slingshotIndicator) {
+            const script = this.slingshotIndicator.getComponent('SlingshotIndicator');
+            if (script) script.updatePosition(this.currentDragPos);
+        }
+        
         this.drawPreviewTrajectory(offset);
     },
     
@@ -424,6 +437,12 @@ cc.Class({
         if (!this.isDragging) return;
         
         console.log('🚀 松手，准备发射');
+        
+        // 显示弹弓松手指示器
+        if (this.slingshotIndicator && this.currentDragPos) {
+            const script = this.slingshotIndicator.getComponent('SlingshotIndicator');
+            if (script) script.showRelease(this.currentDragPos);
+        }
         
         this.isDragging = false;
         this.previewLine.clear();
@@ -756,7 +775,7 @@ cc.Class({
             
             const pillar = cc.instantiate(this.pillarPrefab);
             pillar.parent = this.node;
-            pillar.position = cc.v2(lastX + distance, -300);
+            pillar.position = cc.v2(lastX + distance, -360);
             
             const pillarScript = pillar.getComponent('Pillar');
             pillarScript.setHeight(height);
@@ -798,9 +817,6 @@ cc.Class({
     },
 
     updateUI() {
-        if (this.shotCountLabel) {
-            this.shotCountLabel.string = '发射: ' + this.currentShotCount;
-        }
         if (this.scoreLabel) {
             this.scoreLabel.string = '得分: ' + this.score;
         }

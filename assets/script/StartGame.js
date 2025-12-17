@@ -9,13 +9,20 @@ cc.Class({
     onLoad: function () {
         // this.audioMng = this.audioMng.getComponent('AudioMng');
         // this.audioMng.playMusic();
-        cc.director.preloadScene('table', function () {
-            cc.log('Next scene preloaded');
-        });
+        // cc.director.preloadScene('normalScene', function () {
+        //     cc.log('Next scene preloaded');
+        // });
+
+        //音乐
+        const AudioUtil = require('AudioUtil');
+        AudioUtil.playMusic('bgm01');
+        //AudioUtil.playEffect('click');播放音效
+        //AudioUtil.setMusicVolume(0.5);
+        //AudioUtil.setEffectVolume(0.7);//AudioUtil.stopMusic();
     },
 
     playGame: function () {
-        cc.director.loadScene('happyopen');
+        cc.director.loadScene('normalScene');
     },
 
     // called every frame

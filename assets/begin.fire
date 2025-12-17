@@ -1009,10 +1009,12 @@
   },
   {
     "__type__": "cc.ClickEvent",
-    "target": null,
+    "target": {
+      "__id__": 2
+    },
     "component": "",
-    "_componentId": "",
-    "handler": "",
+    "_componentId": "18ec7DIpr1MOpDybKljbkpf",
+    "handler": "playGame",
     "customEventData": ""
   },
   {
