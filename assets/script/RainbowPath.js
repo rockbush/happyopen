@@ -37,6 +37,8 @@ cc.Class({
         
         // 是否显示
         this.isVisible = false;
+
+        this.node.zIndex = 999
         
         console.log('☁️ 云朵路径初始化完成');
     },
@@ -172,6 +174,7 @@ cc.Class({
         this.isVisible = false;
         console.log('☁️ 云朵路径已清除');
     },
+
     
     // 世界左移时调用
     shiftLeft(distance) {

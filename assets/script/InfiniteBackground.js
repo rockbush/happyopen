@@ -15,7 +15,7 @@ cc.Class({
     onLoad() {
         // 获取屏幕半宽
         this.screenHalfWidth = cc.winSize.width / 2;
-        
+        this.node.zIndex = -2
         // 创建四个背景节点
         this.bgs = [];
         for (let i = 0; i < 4; i++) {

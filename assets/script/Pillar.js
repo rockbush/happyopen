@@ -22,6 +22,7 @@ cc.Class({
 
     onLoad() {
         this.pillarHeight = 200;
+        this.node.zIndex = -1;
     },
 
     // 设置柱子高度

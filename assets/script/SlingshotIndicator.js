@@ -16,14 +16,14 @@ cc.Class({
             type: cc.SpriteFrame,
             tooltip: '拖拽中显示的图片'
         },
-        
+
         // 松手后显示的图片
         releaseSprite: {
             default: null,
             type: cc.SpriteFrame,
             tooltip: '松手后显示的图片'
         },
-        
+
         // 松手后图片显示时长
         releaseDuration: {
             default: 1.0,
@@ -37,10 +37,11 @@ cc.Class({
         if (!this.sprite) {
             this.sprite = this.node.addComponent(cc.Sprite);
         }
-        
+
         // 默认隐藏
         this.node.active = false;
-        
+        this.node.zIndex = 1000;
+
         console.log('🎯 弹弓指示器初始化完成');
     },
 
@@ -48,17 +49,17 @@ cc.Class({
     showDragging(worldPos) {
         // 取消之前的定时器
         this.unscheduleAllCallbacks();
-        
+
         // 设置拖拽中的图片
         if (this.draggingSprite) {
             this.sprite.spriteFrame = this.draggingSprite;
         }
-        
+
         // 设置位置
         this.node.position = worldPos;
         this.node.active = true;
     },
-    
+
     // 拖拽过程中更新位置（传入世界坐标）
     updatePosition(worldPos) {
         if (this.node.active) {
@@ -72,11 +73,11 @@ cc.Class({
         if (this.releaseSprite) {
             this.sprite.spriteFrame = this.releaseSprite;
         }
-        
+
         // 设置位置
         this.node.position = worldPos;
         this.node.active = true;
-        
+
         // 延迟隐藏
         this.scheduleOnce(() => {
             this.hide();
@@ -87,4 +88,7 @@ cc.Class({
     hide() {
         this.node.active = false;
     }
+
+
+
 });
