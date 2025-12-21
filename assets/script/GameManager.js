@@ -65,6 +65,13 @@ cc.Class({
         cameraInertiaDecay: {
             default: 0.92,
             tooltip: '惯性衰减系数，0.9-0.98之间，越大滑动越远'
+        },
+        
+        // 【v2新增】拖拽虚线节点
+        dragLine: {
+            default: null,
+            type: cc.Node,
+            tooltip: '拖拽虚线节点（挂载DragLine脚本）'
         }
     },
 
@@ -403,10 +410,25 @@ cc.Class({
             const script = this.slingshotIndicator.getComponent('SlingshotIndicator');
             if (script) script.updatePosition(this.currentDragPos);
         }
-        
+
+        // 【v2新增】更新猴子头部朝向
+        if (this.monkeyScript) {
+            this.monkeyScript.setHeadDirection(offset);
+        }
+
+        // 【v2新增】显示拖拽虚线
+        if (this.dragLine && this.monkeyScript) {
+            const dragLineScript = this.dragLine.getComponent('DragLine');
+            if (dragLineScript) {
+                const headTop = this.monkeyScript.getHeadTopPosition();
+                const headBottom = this.monkeyScript.getHeadBottomPosition();
+                dragLineScript.show(headTop, headBottom, this.currentDragPos);
+            }
+        }
+
         this.drawPreviewTrajectory(offset);
     },
-    
+
     getTouchPosInWorld(event) {
         const touchScreenPos = event.getLocation();
         const canvas = cc.find('Canvas');
@@ -446,7 +468,20 @@ cc.Class({
         
         this.isDragging = false;
         this.previewLine.clear();
-        
+
+        // 【v2新增】隐藏拖拽虚线
+        if (this.dragLine) {
+            const dragLineScript = this.dragLine.getComponent('DragLine');
+            if (dragLineScript) {
+                dragLineScript.hide();
+            }
+        }
+
+        // 【v2新增】重置猴子头部朝向
+        if (this.monkeyScript) {
+            this.monkeyScript.resetHeadDirection();
+        }
+
         this.launchWaterDrop();
     },
 
@@ -456,7 +491,8 @@ cc.Class({
         this.previewLine.lineWidth = 3;
         
         const velocity = dragOffset.mul(-this.launchPower);
-        let pos = cc.v2(this.monkey.x, this.monkey.y - 50);
+        // 【v2修改】使用猴子发射点位置
+        let pos = this.monkeyScript ? this.monkeyScript.getLaunchPosition() : cc.v2(this.monkey.x, this.monkey.y + 100);
         
         const steps = 60;
         const dt = 0.05;
@@ -497,7 +533,8 @@ cc.Class({
         
         const waterDrop = cc.instantiate(this.waterDropPrefab);
         waterDrop.parent = this.node;
-        waterDrop.position = this.slingshotNode.position.clone();
+        // 【v2修改】使用猴子发射点位置
+        waterDrop.position = this.monkeyScript ? this.monkeyScript.getLaunchPosition() : this.slingshotNode.position.clone();
         
         const dragOffset = this.currentDragOffset || cc.v2(-50, 50);
         const velocity = dragOffset.mul(-this.launchPower);
@@ -524,7 +561,9 @@ cc.Class({
             this.trajectoryTimer = null;
         }
         
-        this.pathPoints.push(this.slingshotNode.position.clone());
+        // 【v2修改】使用猴子发射点位置
+        const startPos = this.monkeyScript ? this.monkeyScript.getLaunchPosition() : this.slingshotNode.position.clone();
+        this.pathPoints.push(startPos);
         
         this.scheduleOnce(() => {
             const recordFunc = () => {
@@ -626,7 +665,12 @@ cc.Class({
         console.log('🐵 猴子开始移动到:', targetPos.x.toFixed(0), targetPos.y.toFixed(0));
         
         this.isMonkeyMoving = true;
-        
+
+        // 【v2新增】播放行走动画
+        if (this.monkeyScript) {
+            this.monkeyScript.playWalkAnimation();
+        }
+
         const duration = 2.0;
         
         const monkeyStartX = this.monkey.x;
@@ -715,6 +759,12 @@ cc.Class({
         this.monkeyStartPos = this.monkey.position.clone();
         
         this.isMonkeyMoving = false;
+
+        // 【v2新增】停止行走动画
+        if (this.monkeyScript) {
+            this.monkeyScript.stopWalkAnimation();
+        }
+
         this.isWaterDropFlying = false;
         this.isDragging = false;
         this.pathPoints = [];
