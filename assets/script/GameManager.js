@@ -72,6 +72,13 @@ cc.Class({
             default: null,
             type: cc.Node,
             tooltip: '拖拽虚线节点（挂载DragLine脚本）'
+        },
+        
+        // 【v3新增】海浪背景节点
+        infiniteWave: {
+            default: null,
+            type: cc.Node,
+            tooltip: '海浪背景节点（挂载InfiniteWave脚本）'
         }
     },
 
@@ -608,8 +615,9 @@ cc.Class({
                 const pillarScript = targetPillar.getComponent('Pillar');
                 const topNodeY = targetPillar.y + pillarScript.pillarHeight;
                 const topNodeHalfHeight = 10;
-                const monkeyHalfHeight = 100;
-                const targetY = topNodeY + topNodeHalfHeight + monkeyHalfHeight;
+                // 【v3修复】猴子锚点是(0.5, 0)，只需要加一点点偏移
+                const monkeyOffsetY = 5;
+                const targetY = topNodeY + topNodeHalfHeight + monkeyOffsetY;
                 const finalTargetPos = cc.v2(targetPillar.x, targetY);
                 
                 console.log('🎯 目标位置:', finalTargetPos);
@@ -736,6 +744,14 @@ cc.Class({
             const rainbowScript = this.rainbowPath.getComponent('RainbowPath');
             if (rainbowScript) {
                 rainbowScript.shiftLeft(distance);
+            }
+        }
+        
+        // 【v3新增】通知海浪也左移
+        if (this.infiniteWave) {
+            const waveScript = this.infiniteWave.getComponent('InfiniteWave');
+            if (waveScript) {
+                waveScript.shiftLeft(distance);
             }
         }
         
