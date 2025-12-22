@@ -62,14 +62,37 @@ cc.Class({
         maxHeadAngle: {
             default: 80,
             tooltip: '头部最大旋转角度'
+        },
+        
+        // 跳跃动画帧
+        jumpFrames: {
+            default: [],
+            type: [cc.SpriteFrame],
+            tooltip: '跳跃动画帧（按顺序放入）'
+        },
+        
+        // 跳跃动画播放速度
+        jumpFrameRate: {
+            default: 12,
+            tooltip: '跳跃动画帧率'
+        },
+        
+        // 跳跃高度
+        jumpHeight: {
+            default: 30,
+            tooltip: '跳跃时Y位置上移的像素'
         }
     },
 
     onLoad() {
         this.launchPoint = null;
         this.walkFrameIndex = 0;
+        this.jumpFrameIndex = 0;
         this.isWalking = false;
-        this.originalBodySpriteFrame = null;  // 【新增】保存body原始图片
+        this.isJumping = false;
+        this.originalBodySpriteFrame = null;
+        this.walkAnimNode = null;
+        this.jumpAnimNode = null;  // 跳跃动画节点
         this.initStructure();
     },
     
@@ -169,10 +192,13 @@ cc.Class({
             if (this.body) this.body.active = false;
             if (this.hand) this.hand.active = false;
             
-            // 【新增】创建动画节点（如果不存在）
+            // 创建动画节点（如果不存在）
             if (!this.walkAnimNode) {
                 this.walkAnimNode = new cc.Node('walkAnim');
                 this.walkAnimNode.parent = this.node;
+                // 设置锚点为底部中心，和猴子预制体一致
+                this.walkAnimNode.anchorX = 0.5;
+                this.walkAnimNode.anchorY = 0;
                 const sprite = this.walkAnimNode.addComponent(cc.Sprite);
                 sprite.sizeMode = cc.Sprite.SizeMode.RAW;
                 sprite.trim = false;
@@ -213,12 +239,112 @@ cc.Class({
         this.unschedule(this.updateWalkFrame);
         this.node.stopAllActions();
         
-        // 【修改】隐藏动画节点
+        // 隐藏动画节点
         if (this.walkAnimNode) {
             this.walkAnimNode.active = false;
         }
         
-        // 【修改】显示回head、body、hand节点
+        // 显示回head、body、hand节点
+        if (this.head) this.head.active = true;
+        if (this.body) this.body.active = true;
+        if (this.hand) this.hand.active = true;
+    },
+    
+    /**
+     * 播放跳跃动画
+     * @param {Function} callback - 跳跃完成后的回调
+     * @param {Number} targetY - 目标Y坐标（云朵位置），猴子底部会落到这个位置
+     */
+    playJumpAnimation(callback, targetY) {
+        if (this.isJumping) return;
+        this.isJumping = true;
+        
+        // 计算需要跳跃的高度
+        const currentY = this.node.y;
+        const jumpToY = targetY !== undefined ? targetY : (currentY + this.jumpHeight);
+        const jumpDistance = jumpToY - currentY;
+        
+        console.log('🐵 播放跳跃动画，从', currentY.toFixed(0), '跳到', jumpToY.toFixed(0));
+        
+        if (this.jumpFrames && this.jumpFrames.length > 0) {
+            // 隐藏head、body、hand节点
+            if (this.head) this.head.active = false;
+            if (this.body) this.body.active = false;
+            if (this.hand) this.hand.active = false;
+            
+            // 创建跳跃动画节点（如果不存在）
+            if (!this.jumpAnimNode) {
+                this.jumpAnimNode = new cc.Node('jumpAnim');
+                this.jumpAnimNode.parent = this.node;
+                // 设置锚点为底部中心，和猴子预制体一致
+                this.jumpAnimNode.anchorX = 0.5;
+                this.jumpAnimNode.anchorY = 0;
+                const sprite = this.jumpAnimNode.addComponent(cc.Sprite);
+                sprite.sizeMode = cc.Sprite.SizeMode.RAW;
+                sprite.trim = false;
+            }
+            this.jumpAnimNode.active = true;
+            
+            // 播放跳跃帧动画
+            this.jumpFrameIndex = 0;
+            const interval = 1 / this.jumpFrameRate;
+            const totalDuration = this.jumpFrames.length * interval;
+            
+            this.schedule(this.updateJumpFrame, interval);
+            
+            // Y位置移动到目标位置
+            this.node.runAction(
+                cc.moveTo(totalDuration, this.node.x, jumpToY).easing(cc.easeOut(2))
+            );
+            
+            // 动画播放完毕后回调
+            this.scheduleOnce(() => {
+                this.stopJumpAnimation();
+                if (callback) callback();
+            }, totalDuration);
+            
+        } else {
+            // 没有跳跃帧，用简单的跳跃动作
+            this.node.runAction(
+                cc.sequence(
+                    cc.moveTo(0.3, this.node.x, jumpToY).easing(cc.easeOut(2)),
+                    cc.callFunc(() => {
+                        this.isJumping = false;
+                        if (callback) callback();
+                    })
+                )
+            );
+        }
+    },
+    
+    // 更新跳跃帧
+    updateJumpFrame() {
+        if (!this.jumpAnimNode || !this.jumpFrames || this.jumpFrames.length === 0) return;
+        
+        const sprite = this.jumpAnimNode.getComponent(cc.Sprite);
+        if (sprite && this.jumpFrames[this.jumpFrameIndex]) {
+            sprite.spriteFrame = this.jumpFrames[this.jumpFrameIndex];
+        }
+        
+        this.jumpFrameIndex++;
+        
+        // 跳跃动画不循环，播放到最后一帧就停止
+        if (this.jumpFrameIndex >= this.jumpFrames.length) {
+            this.unschedule(this.updateJumpFrame);
+        }
+    },
+    
+    // 停止跳跃动画
+    stopJumpAnimation() {
+        this.isJumping = false;
+        this.unschedule(this.updateJumpFrame);
+        
+        // 隐藏跳跃动画节点
+        if (this.jumpAnimNode) {
+            this.jumpAnimNode.active = false;
+        }
+        
+        // 显示回head、body、hand节点
         if (this.head) this.head.active = true;
         if (this.body) this.body.active = true;
         if (this.hand) this.hand.active = true;

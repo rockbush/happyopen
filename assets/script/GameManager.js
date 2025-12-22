@@ -674,11 +674,30 @@ cc.Class({
         
         this.isMonkeyMoving = true;
 
-        // 【v2新增】播放行走动画
-        if (this.monkeyScript) {
-            this.monkeyScript.playWalkAnimation();
+        // 【v4修改】先播放跳跃动画，跳跃到云朵上方
+        if (this.monkeyScript && this.pathPoints && this.pathPoints.length > 0) {
+            // 路径起点Y坐标 + 2倍云朵高度 = 站在云朵上
+            let cloudHeight = 35;  // 默认值
+            if (this.rainbowPath) {
+                const rainbowScript = this.rainbowPath.getComponent('RainbowPath');
+                if (rainbowScript) {
+                    cloudHeight = rainbowScript.cloudHeight;
+                }
+            }
+            const targetY = this.pathPoints[0].y + cloudHeight * 2;
+            
+            this.monkeyScript.playJumpAnimation(() => {
+                // 跳跃完成后，开始行走
+                this.startWalkToTarget(targetPos);
+            }, targetY);
+        } else {
+            // 没有猴子脚本或路径，直接行走
+            this.startWalkToTarget(targetPos);
         }
-
+    },
+    
+    // 【v4新增】开始行走到目标
+    startWalkToTarget(targetPos) {
         const duration = 2.0;
         
         const monkeyStartX = this.monkey.x;
@@ -686,7 +705,12 @@ cc.Class({
         
         console.log('移动距离:', moveDistance.toFixed(0));
         
-        // 【新增】摄像机跟随猴子移动
+        // 播放行走动画
+        if (this.monkeyScript) {
+            this.monkeyScript.playWalkAnimation();
+        }
+
+        // 摄像机跟随猴子移动
         if (this.cameraNode) {
             this.cameraNode.stopAllActions();
             const cameraTargetX = this.cameraNode.x + moveDistance;

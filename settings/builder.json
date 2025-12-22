@@ -1,7 +1,7 @@
 {
-  "title": "NewProject",
+  "title": "happyopen",
   "packageName": "org.cocos2d.demo",
-  "startScene": "46aff18a-0acc-4c9a-bdbe-395d0d3d95c9",
+  "startScene": "11e38425-7eb0-42c0-adbe-301492ab5b44",
   "excludeScenes": [],
   "orientation": {
     "landscapeRight": true,

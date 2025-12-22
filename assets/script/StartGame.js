@@ -12,6 +12,18 @@ cc.Class({
         // cc.director.preloadScene('normalScene', function () {
         //     cc.log('Next scene preloaded');
         // });
+        cc.director.once(cc.Director.EVENT_AFTER_SCENE_LAUNCH, () => {
+            try {
+                const canvas = cc.game.canvas;
+                console.log('[DBG] canvas size:', canvas && canvas.width, canvas && canvas.height);
+                console.log('[DBG] frameSize:', cc.view.getFrameSize());
+                console.log('[DBG] visibleSize:', cc.view.getVisibleSize());
+                console.log('[DBG] renderType:', cc.game.renderType, 'WEBGL=', cc.game.RENDER_TYPE_WEBGL);
+            } catch (e) {
+                console.error('[DBG] exception:', e);
+            }
+        });
+
 
         //音乐
         const AudioUtil = require('AudioUtil');

@@ -532,6 +532,34 @@
     "defaultHeadAngle": 45,
     "minHeadAngle": -60,
     "maxHeadAngle": 80,
+    "jumpFrames": [
+      {
+        "__uuid__": "cf157e3f-da15-4c7b-962d-106489285b66"
+      },
+      {
+        "__uuid__": "939f7f44-b8ad-43d9-9f2a-40867887b770"
+      },
+      {
+        "__uuid__": "35e7e6cf-74c2-4d0f-9b6e-77b543d22a94"
+      },
+      {
+        "__uuid__": "b8716f0e-840a-42bf-b74d-8bc9d15a632a"
+      },
+      {
+        "__uuid__": "5ee4ab5a-ef01-4deb-8fc2-712aa0c7a960"
+      },
+      {
+        "__uuid__": "da4b5327-2f06-417d-9f19-9d2af81f93ae"
+      },
+      {
+        "__uuid__": "7a477a2b-d3e7-4fe2-bf7a-54f6ef28c4b5"
+      },
+      {
+        "__uuid__": "3cd87183-da9e-4ac6-8cc8-89917c8ea045"
+      }
+    ],
+    "jumpFrameRate": 12,
+    "jumpHeight": 30,
     "_id": ""
   },
   {
