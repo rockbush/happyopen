@@ -572,10 +572,10 @@
     },
     "_clips": [
       {
-        "__uuid__": "016f758f-64ab-4935-95fc-038ca2c94092"
+        "__uuid__": "27de98aa-8035-40d4-a59e-e5a35e659963"
       }
     ],
-    "playOnLoad": true,
+    "playOnLoad": false,
     "_id": ""
   },
   {

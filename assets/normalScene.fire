@@ -1203,7 +1203,7 @@
     },
     "cloudWidth": 80,
     "cloudHeight": 35,
-    "cloudSpacing": 100,
+    "cloudSpacing": 80,
     "_id": "deiyvHMIpMSbC1w4IjDSZL"
   },
   {
@@ -1826,6 +1826,8 @@
     "waveSprite": {
       "__uuid__": "088b3f90-9c92-40ae-9fed-aa1b665ce143"
     },
+    "waveWidth": 256,
+    "waveHeight": 128,
     "waveOffsetY": -50,
     "autoScrollSpeed": 30,
     "_id": "c7mFVxV8BKy4WN0DeZZjli"

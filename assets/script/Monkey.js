@@ -69,6 +69,7 @@ cc.Class({
         this.launchPoint = null;
         this.walkFrameIndex = 0;
         this.isWalking = false;
+        this.originalBodySpriteFrame = null;  // 【新增】保存body原始图片
         this.initStructure();
     },
     
@@ -78,6 +79,14 @@ cc.Class({
         if (!this.head) this.head = this.node.getChildByName('head');
         if (!this.body) this.body = this.node.getChildByName('body');
         if (!this.hand) this.hand = this.node.getChildByName('hand');
+        
+        // 【新增】保存body原始spriteFrame
+        if (this.body) {
+            const sprite = this.body.getComponent(cc.Sprite);
+            if (sprite) {
+                this.originalBodySpriteFrame = sprite.spriteFrame;
+            }
+        }
         
         // 创建或获取发射点
         if (this.head) {
@@ -155,6 +164,21 @@ cc.Class({
         
         // 如果有行走帧，播放帧动画
         if (this.walkFrames && this.walkFrames.length > 0) {
+            // 【修改】隐藏head、body、hand节点（因为动画帧是完整猴子）
+            if (this.head) this.head.active = false;
+            if (this.body) this.body.active = false;
+            if (this.hand) this.hand.active = false;
+            
+            // 【新增】创建动画节点（如果不存在）
+            if (!this.walkAnimNode) {
+                this.walkAnimNode = new cc.Node('walkAnim');
+                this.walkAnimNode.parent = this.node;
+                const sprite = this.walkAnimNode.addComponent(cc.Sprite);
+                sprite.sizeMode = cc.Sprite.SizeMode.RAW;
+                sprite.trim = false;
+            }
+            this.walkAnimNode.active = true;
+            
             this.walkFrameIndex = 0;
             const interval = 1 / this.walkFrameRate;
             this.schedule(this.updateWalkFrame, interval);
@@ -173,14 +197,11 @@ cc.Class({
     
     // 更新行走帧
     updateWalkFrame() {
-        if (!this.body || !this.walkFrames || this.walkFrames.length === 0) return;
+        if (!this.walkAnimNode || !this.walkFrames || this.walkFrames.length === 0) return;
         
-        const sprite = this.body.getComponent(cc.Sprite);
+        const sprite = this.walkAnimNode.getComponent(cc.Sprite);
         if (sprite && this.walkFrames[this.walkFrameIndex]) {
             sprite.spriteFrame = this.walkFrames[this.walkFrameIndex];
-            // 使用原始尺寸，关闭trim
-            sprite.sizeMode = cc.Sprite.SizeMode.RAW;
-            sprite.trim = false;
         }
         
         this.walkFrameIndex = (this.walkFrameIndex + 1) % this.walkFrames.length;
@@ -192,14 +213,14 @@ cc.Class({
         this.unschedule(this.updateWalkFrame);
         this.node.stopAllActions();
         
-        // 恢复到第一帧（站立状态）
-        if (this.body && this.walkFrames && this.walkFrames.length > 0) {
-            const sprite = this.body.getComponent(cc.Sprite);
-            if (sprite) {
-                sprite.spriteFrame = this.walkFrames[0];
-                sprite.sizeMode = cc.Sprite.SizeMode.RAW;
-                sprite.trim = false;
-            }
+        // 【修改】隐藏动画节点
+        if (this.walkAnimNode) {
+            this.walkAnimNode.active = false;
         }
+        
+        // 【修改】显示回head、body、hand节点
+        if (this.head) this.head.active = true;
+        if (this.body) this.body.active = true;
+        if (this.hand) this.hand.active = true;
     }
 });
