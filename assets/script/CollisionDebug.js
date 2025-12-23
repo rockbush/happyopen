@@ -60,7 +60,7 @@ cc.Class({
         this.drawWaterDropCollider();
     },
     
-    // 绘制TopNode碰撞区域（绿色）
+    // 绘制TopNode碰撞区域（绿色，只有下半部分）
     drawTopNodeColliders() {
         if (!this.gameManager || !this.gameManager.pillars) return;
         
@@ -77,9 +77,15 @@ cc.Class({
             const topWorldPos = pillar.convertToWorldSpaceAR(pillarScript.topNode.position);
             const topNodePos = this.node.parent.convertToNodeSpaceAR(topWorldPos);
             
-            // 碰撞区域大小（和WaterDrop.js中的检测逻辑一致）
-            const topWidth = pillarScript.topNode.width / 2;
-            const topHeight = pillarScript.topNode.height / 2 + 15; // 注意这里+15
+            // 碰撞区域（只有下半部分）
+            const topHalfWidth = pillarScript.topNode.width / 2;
+            const topFullHeight = pillarScript.topNode.height;
+            
+            // 下半部分矩形
+            const rectX = topNodePos.x - topHalfWidth;
+            const rectY = topNodePos.y - topFullHeight / 2;
+            const rectW = topHalfWidth * 2;
+            const rectH = topFullHeight / 2;
             
             // 绘制碰撞区域矩形
             this.graphics.strokeColor = this.topNodeColor;
@@ -87,15 +93,10 @@ cc.Class({
                 this.topNodeColor.r, 
                 this.topNodeColor.g, 
                 this.topNodeColor.b, 
-                50  // 半透明填充
+                50
             );
             
-            this.graphics.rect(
-                topNodePos.x - topWidth,
-                topNodePos.y - topHeight,
-                topWidth * 2,
-                topHeight * 2
-            );
+            this.graphics.rect(rectX, rectY, rectW, rectH);
             this.graphics.fill();
             this.graphics.stroke();
             

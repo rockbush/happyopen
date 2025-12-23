@@ -50,15 +50,22 @@ cc.Class({
             const topWorldPos = pillar.convertToWorldSpaceAR(pillarScript.topNode.position);
             const topNodePos = this.node.parent.convertToNodeSpaceAR(topWorldPos);
             
-            // TopNode 碰撞区域（矩形）
+            // TopNode 碰撞区域（只取下半部分）
             const topHalfWidth = pillarScript.topNode.width / 2;
-            const topHalfHeight = pillarScript.topNode.height / 2;
+            const topFullHeight = pillarScript.topNode.height;
+            
+            // 下半部分矩形：从中心往下
+            // 矩形左下角 Y = 中心Y - 高度/2
+            // 矩形高度 = 原高度/2（只取下半部分）
+            const rectX = topNodePos.x - topHalfWidth;
+            const rectY = topNodePos.y - topFullHeight / 2;  // 下半部分的底部
+            const rectW = topHalfWidth * 2;
+            const rectH = topFullHeight / 2;  // 只有一半高度
             
             // 使用圆形与矩形的碰撞检测
             if (this.circleRectCollision(
                 waterDropPos.x, waterDropPos.y, this.collisionRadius,
-                topNodePos.x - topHalfWidth, topNodePos.y - topHalfHeight,
-                topHalfWidth * 2, topHalfHeight * 2
+                rectX, rectY, rectW, rectH
             )) {
                 // 碰到柱子顶部了！
                 console.log('💥 碰撞成功！水滴位置:', waterDropPos.x.toFixed(0), waterDropPos.y.toFixed(0));
