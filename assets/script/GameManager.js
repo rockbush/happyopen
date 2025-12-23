@@ -528,25 +528,34 @@ cc.Class({
         this.previewLine.lineWidth = 3;
         
         const velocity = dragOffset.mul(-this.launchPower);
-        // 【v2修改】使用猴子发射点位置
+        // 使用猴子发射点位置
         let pos = this.monkeyScript ? this.monkeyScript.getLaunchPosition() : cc.v2(this.monkey.x, this.monkey.y + 100);
         
-        const steps = 60;
-        const dt = 0.05;
-        const gravity = cc.director.getPhysicsManager().gravity.y;
+        const steps = 80;
+        const dt = 1 / 60;  // 和物理引擎步长一致
+        
+        // Box2D 使用 PTM_RATIO = 32，重力单位转换
+        // 物理引擎重力是 -500 像素/秒²，但 Box2D 内部会除以 PTM_RATIO
+        // 实际效果的重力 = gravity.y * PTM_RATIO = -500 * 32 ？
+        // 不对，应该是：设置的gravity已经是像素单位，Box2D会转成米
+        // linearVelocity 设置的是像素/秒，Box2D内部转成米/秒
+        // 所以预览时直接用像素单位的重力
+        const gravity = cc.director.getPhysicsManager().gravity.y;  // -500
         
         let vel = velocity.clone();
         
         this.previewLine.moveTo(pos.x, pos.y);
         
         for (let i = 0; i < steps; i++) {
+            // 速度更新
             vel.y += gravity * dt;
+            // 位置更新
             pos.x += vel.x * dt;
             pos.y += vel.y * dt;
             
             this.previewLine.lineTo(pos.x, pos.y);
             
-            if (pos.y < -350) break;
+            if (pos.y < -400) break;
         }
         
         this.previewLine.stroke();

@@ -170,6 +170,7 @@
     },
     "_enabled": true,
     "gameManager": null,
+    "collisionRadius": 25,
     "_id": ""
   },
   {

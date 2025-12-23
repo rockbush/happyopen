@@ -1,8 +1,18 @@
+// WaterDrop.js
+// 水滴脚本 - 稳定版本6
+// 使用圆形碰撞区域检测
+
 cc.Class({
     extends: cc.Component,
 
     properties: {
-        gameManager: null
+        gameManager: null,
+        
+        // 水滴碰撞半径
+        collisionRadius: {
+            default: 40,
+            tooltip: '水滴碰撞检测半径'
+        }
     },
 
     onLoad() {
@@ -10,8 +20,8 @@ cc.Class({
         this.hasCheckedCollision = false;
         this.isDestroying = false;
         
-        // 开始检测与柱子顶部的碰撞
-        this.schedule(this.checkTopCollision, 0.02);
+        // 开始检测与柱子顶部的碰撞（提高频率）
+        this.schedule(this.checkTopCollision, 0.016);  // 约60fps检测
         
         // 5秒后自动销毁（避免永远飞行）
         this.scheduleOnce(() => {
@@ -27,6 +37,7 @@ cc.Class({
         
         // 遍历所有柱子，检查是否碰到顶部
         const pillars = this.gameManager.pillars;
+        const waterDropPos = this.node.position;
         
         for (let i = 0; i < pillars.length; i++) {
             const pillar = pillars[i];
@@ -39,20 +50,41 @@ cc.Class({
             const topWorldPos = pillar.convertToWorldSpaceAR(pillarScript.topNode.position);
             const topNodePos = this.node.parent.convertToNodeSpaceAR(topWorldPos);
             
-            // 检查水滴是否接触到顶部节点
-            const topWidth = pillarScript.topNode.width / 2;
-            const topHeight = pillarScript.topNode.height / 2;
+            // TopNode 碰撞区域（矩形）
+            const topHalfWidth = pillarScript.topNode.width / 2;
+            const topHalfHeight = pillarScript.topNode.height / 2;
             
-            // 简单的矩形碰撞检测
-            const deltaX = Math.abs(this.node.position.x - topNodePos.x);
-            const deltaY = Math.abs(this.node.position.y - topNodePos.y);
-            
-            if (deltaX < topWidth && deltaY < topHeight + 15) {
+            // 使用圆形与矩形的碰撞检测
+            if (this.circleRectCollision(
+                waterDropPos.x, waterDropPos.y, this.collisionRadius,
+                topNodePos.x - topHalfWidth, topNodePos.y - topHalfHeight,
+                topHalfWidth * 2, topHalfHeight * 2
+            )) {
                 // 碰到柱子顶部了！
+                console.log('💥 碰撞成功！水滴位置:', waterDropPos.x.toFixed(0), waterDropPos.y.toFixed(0));
                 this.onHitTarget();
                 return;
             }
         }
+    },
+    
+    // 圆形与矩形碰撞检测
+    // cx, cy: 圆心坐标
+    // r: 圆半径
+    // rx, ry: 矩形左下角坐标
+    // rw, rh: 矩形宽高
+    circleRectCollision(cx, cy, r, rx, ry, rw, rh) {
+        // 找到矩形上离圆心最近的点
+        const closestX = Math.max(rx, Math.min(cx, rx + rw));
+        const closestY = Math.max(ry, Math.min(cy, ry + rh));
+        
+        // 计算圆心到最近点的距离
+        const distanceX = cx - closestX;
+        const distanceY = cy - closestY;
+        const distanceSquared = distanceX * distanceX + distanceY * distanceY;
+        
+        // 如果距离小于半径，则碰撞
+        return distanceSquared <= r * r;
     },
 
     onHitTarget() {
