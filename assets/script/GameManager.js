@@ -23,7 +23,7 @@ cc.Class({
         pillarWidth: 80,         // 柱子宽度
         
         // 发射参数
-        launchPower: 14,         // 发射力量
+        launchPower: 20,         // 发射力量
         
         // 猴子在屏幕左侧的固定位置（距离屏幕左边的像素）
         monkeyScreenOffsetX: 100,
@@ -96,9 +96,15 @@ cc.Class({
             this.camera = cc.Camera.main;
         }
         this.cameraNode = this.camera.node;
-        this.initialCameraX = this.cameraNode.x;
         
-        // 计算屏幕宽度的一半
+        // 【v6修复】使用设计分辨率，而不是实际屏幕尺寸
+        // 这样在超宽屏上位置计算保持一致
+        const designWidth = 1280;
+        const designHeight = 720;
+        this.designHalfWidth = designWidth / 2;   // 640
+        this.designHalfHeight = designHeight / 2; // 360
+        
+        // 实际屏幕尺寸（用于某些需要实际尺寸的地方）
         this.screenHalfWidth = cc.winSize.width / 2;
         this.screenHalfHeight = cc.winSize.height / 2;
         
@@ -135,6 +141,10 @@ cc.Class({
         
         // 初始化游戏
         this.initGame();
+        
+        // 【v6修复】初始化摄像机位置，确保能看到猴子
+        this.initialCameraX = this.monkey.x + this.designHalfWidth - this.monkeyScreenOffsetX;
+        this.cameraNode.x = this.initialCameraX;
         
         // 获取 Canvas 节点
         this.canvas = cc.find('Canvas');
@@ -262,7 +272,8 @@ cc.Class({
         this.monkey = cc.instantiate(this.monkeyPrefab);
         this.monkey.parent = this.node;
         
-        const initialMonkeyX = -this.screenHalfWidth + this.monkeyScreenOffsetX;
+        // 【v6修复】使用设计分辨率计算猴子位置
+        const initialMonkeyX = -this.designHalfWidth + this.monkeyScreenOffsetX;
         this.monkeyStartPos = cc.v2(initialMonkeyX, 0);
         this.monkey.position = this.monkeyStartPos;
         
@@ -312,7 +323,8 @@ cc.Class({
             
             this.pillars.push(pillar);
             
-            const isOnScreen = x >= -this.screenHalfWidth && x <= this.screenHalfWidth;
+            // 【v6修复】使用设计分辨率判断
+            const isOnScreen = x >= -this.designHalfWidth && x <= this.designHalfWidth;
             console.log('🏛️ 柱子', i + 1, '| X:', x.toFixed(0), '| 间距:', distance.toFixed(0), '|', isOnScreen ? '📺 屏幕内' : '🔭 屏幕外');
             
             lastX = x;
@@ -321,11 +333,23 @@ cc.Class({
         console.log('========== 柱子生成完成，最远:', lastX.toFixed(0), '==========');
     },
 
-    // 判断触摸点是否在弹弓附近
-    isTouchNearSlingshot(touchPos) {
-        const slingshotPos = cc.v2(this.monkey.x, this.monkey.y - 50);
-        const distance = touchPos.sub(slingshotPos).mag();
-        return distance < 150;
+    // 判断触摸点是否在猴子身上
+    isTouchOnMonkey(touchPos) {
+        if (!this.monkey) return false;
+        
+        // 猴子的边界框（锚点0.5, 0，所以从底部往上算）
+        const monkeyX = this.monkey.x;
+        const monkeyY = this.monkey.y;
+        const monkeyWidth = 150;   // 猴子触摸区域宽度
+        const monkeyHeight = 200;  // 猴子触摸区域高度
+        
+        const left = monkeyX - monkeyWidth / 2;
+        const right = monkeyX + monkeyWidth / 2;
+        const bottom = monkeyY;
+        const top = monkeyY + monkeyHeight;
+        
+        return touchPos.x >= left && touchPos.x <= right && 
+               touchPos.y >= bottom && touchPos.y <= top;
     },
 
     onTouchStart(event) {
@@ -339,8 +363,8 @@ cc.Class({
         this.lastTouchPos = event.getLocation();
         this.lastTouchTime = Date.now();
         
-        // 如果在弹弓附近，并且游戏状态允许，则开始拖拽弹弓
-        if (!this.isWaterDropFlying && !this.isMonkeyMoving && this.isTouchNearSlingshot(touchPos)) {
+        // 如果触摸到猴子身上，并且游戏状态允许，则开始拖拽
+        if (!this.isWaterDropFlying && !this.isMonkeyMoving && this.isTouchOnMonkey(touchPos)) {
             this.isDragging = true;
             this.isCameraDragging = false;
             this.dragStartPos = touchPos;
@@ -349,7 +373,11 @@ cc.Class({
                 const script = this.slingshotIndicator.getComponent('SlingshotIndicator');
                 if (script) script.showDragging(touchPos);
             }
-            console.log('🎯 开始拖拽弹弓');
+            // 【v6新增】切换头部为拖拽图片
+            if (this.monkeyScript) {
+                this.monkeyScript.startDragging();
+            }
+            console.log('🎯 开始拖拽');
         } 
         // 否则，如果调试模式开启，开始拖拽摄像机
         else if (this.debugCameraDrag) {
@@ -487,6 +515,8 @@ cc.Class({
         // 【v2新增】重置猴子头部朝向
         if (this.monkeyScript) {
             this.monkeyScript.resetHeadDirection();
+            // 【v6新增】恢复头部图片
+            this.monkeyScript.stopDragging();
         }
 
         this.launchWaterDrop();
@@ -676,7 +706,7 @@ cc.Class({
 
         // 【v4修改】先播放跳跃动画，跳跃到云朵上方
         if (this.monkeyScript && this.pathPoints && this.pathPoints.length > 0) {
-            // 路径起点Y坐标 + 2倍云朵高度 = 站在云朵上
+            // 路径起点Y坐标 + 云朵高度 = 站在云朵上
             let cloudHeight = 35;  // 默认值
             if (this.rainbowPath) {
                 const rainbowScript = this.rainbowPath.getComponent('RainbowPath');
@@ -684,7 +714,7 @@ cc.Class({
                     cloudHeight = rainbowScript.cloudHeight;
                 }
             }
-            const targetY = this.pathPoints[0].y + cloudHeight * 2;
+            const targetY = this.pathPoints[0].y + cloudHeight;
             
             this.monkeyScript.playJumpAnimation(() => {
                 // 跳跃完成后，开始行走

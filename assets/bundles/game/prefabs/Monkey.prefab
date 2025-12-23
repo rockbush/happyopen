@@ -560,6 +560,9 @@
     ],
     "jumpFrameRate": 12,
     "jumpHeight": 30,
+    "headDraggingSprite": {
+      "__uuid__": "9b2a74c1-4654-4ad6-b4f3-78ea50226c36"
+    },
     "_id": ""
   },
   {

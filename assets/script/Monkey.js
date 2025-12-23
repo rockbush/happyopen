@@ -81,6 +81,13 @@ cc.Class({
         jumpHeight: {
             default: 30,
             tooltip: '跳跃时Y位置上移的像素'
+        },
+        
+        // 拖拽时的头部图片
+        headDraggingSprite: {
+            default: null,
+            type: cc.SpriteFrame,
+            tooltip: '拖拽瞄准时的头部图片'
         }
     },
 
@@ -91,8 +98,9 @@ cc.Class({
         this.isWalking = false;
         this.isJumping = false;
         this.originalBodySpriteFrame = null;
+        this.originalHeadSpriteFrame = null;  // 保存头部原始图片
         this.walkAnimNode = null;
-        this.jumpAnimNode = null;  // 跳跃动画节点
+        this.jumpAnimNode = null;
         this.initStructure();
     },
     
@@ -103,11 +111,19 @@ cc.Class({
         if (!this.body) this.body = this.node.getChildByName('body');
         if (!this.hand) this.hand = this.node.getChildByName('hand');
         
-        // 【新增】保存body原始spriteFrame
+        // 保存body原始spriteFrame
         if (this.body) {
             const sprite = this.body.getComponent(cc.Sprite);
             if (sprite) {
                 this.originalBodySpriteFrame = sprite.spriteFrame;
+            }
+        }
+        
+        // 保存head原始spriteFrame
+        if (this.head) {
+            const sprite = this.head.getComponent(cc.Sprite);
+            if (sprite) {
+                this.originalHeadSpriteFrame = sprite.spriteFrame;
             }
         }
         
@@ -177,6 +193,26 @@ cc.Class({
     resetHeadDirection() {
         if (this.head) {
             this.head.angle = this.defaultHeadAngle;
+        }
+    },
+    
+    // 开始拖拽时切换头部图片
+    startDragging() {
+        if (this.head && this.headDraggingSprite) {
+            const sprite = this.head.getComponent(cc.Sprite);
+            if (sprite) {
+                sprite.spriteFrame = this.headDraggingSprite;
+            }
+        }
+    },
+    
+    // 结束拖拽时恢复头部图片
+    stopDragging() {
+        if (this.head && this.originalHeadSpriteFrame) {
+            const sprite = this.head.getComponent(cc.Sprite);
+            if (sprite) {
+                sprite.spriteFrame = this.originalHeadSpriteFrame;
+            }
         }
     },
     
