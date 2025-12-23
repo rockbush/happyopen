@@ -21,11 +21,13 @@ cc.Class({
             });
         });
 
-
+        console.log('frameSize', cc.view.getFrameSize());
+        console.log('visibleSize', cc.view.getVisibleSize());
+        console.log('design', cc.view.getDesignResolutionSize());
 
         //音乐
-        const AudioUtil = require('AudioUtil');
-        AudioUtil.playMusic('bgm01');
+        // const AudioUtil = require('AudioUtil');
+        // AudioUtil.playMusic('bgm01');
         //AudioUtil.playEffect('click');播放音效
         //AudioUtil.setMusicVolume(0.5);
         //AudioUtil.setEffectVolume(0.7);//AudioUtil.stopMusic();
