@@ -15,9 +15,9 @@ cc.Class({
         // 道路线条节点（可选，会自动创建）
         pathLine: cc.Graphics,
 
-        // 柱子生成参数
-        minPillarDistance: 200,  // 最小柱子间距
-        maxPillarDistance: 500,  // 最大柱子间距
+        // 柱子生成参数（1280宽屏幕，一屏2~4个柱子）
+        minPillarDistance: 320,  // 最小柱子间距（一屏约4个）
+        maxPillarDistance: 640,  // 最大柱子间距（一屏约2个）
         minPillarHeight: 100,    // 最小柱子高度
         maxPillarHeight: 300,    // 最大柱子高度
         pillarWidth: 80,         // 柱子宽度
@@ -115,6 +115,7 @@ cc.Class({
         this.isWaterDropFlying = false;
         this.isMonkeyMoving = false;
         this.pathPoints = [];
+        this.walkSoundId = -1;  // 【v8新增】走路音效ID
 
         // 【新增】摄像机拖拽相关变量
         this.isCameraDragging = false;
@@ -153,6 +154,11 @@ cc.Class({
 
         // 打印世界信息
         this.printWorldInfo();
+        
+        // 【v8新增】播放背景音乐
+        if (typeof AudioManager !== 'undefined') {
+            AudioManager.playMusicBundle('background', 'audio');
+        }
     },
 
     // 打印世界信息
@@ -441,6 +447,12 @@ cc.Class({
             if (this.monkeyScript) {
                 this.monkeyScript.startDragging();
             }
+            
+            // 【v8新增】播放拖拽音效
+            if (typeof AudioManager !== 'undefined') {
+                AudioManager.playSoundBundle('drift', 'audio');
+            }
+            
             console.log('🎯 开始拖拽');
         }
         else if (this.debugCameraDrag) {
@@ -568,6 +580,11 @@ cc.Class({
         if (this.monkeyScript) {
             this.monkeyScript.resetHeadDirection();
             this.monkeyScript.stopDragging();
+        }
+
+        // 【v8新增】播放发射音效
+        if (typeof AudioManager !== 'undefined') {
+            AudioManager.playSoundBundle('shot', 'audio');
         }
 
         this.launchWaterDrop();
@@ -702,6 +719,11 @@ cc.Class({
         if (landedOnPillar) {
             this.score += 100;
             this.updateUI();
+            
+            // 【v8新增】播放命中音效
+            if (typeof AudioManager !== 'undefined') {
+                AudioManager.playSoundBundle('bome', 'audio');
+            }
 
             let targetPillar = null;
             for (let i = 0; i < this.pillars.length; i++) {
@@ -818,6 +840,13 @@ cc.Class({
         if (this.monkeyScript) {
             this.monkeyScript.playWalkAnimation();
         }
+        
+        // 【v8新增】播放走路音效（循环）
+        if (typeof AudioManager !== 'undefined') {
+            AudioManager.playSoundBundle('walk', 'audio', true, (audioId) => {
+                this.walkSoundId = audioId;
+            });
+        }
 
         if (this.cameraNode) {
             this.cameraNode.stopAllActions();
@@ -907,6 +936,12 @@ cc.Class({
 
         if (this.monkeyScript) {
             this.monkeyScript.stopWalkAnimation();
+        }
+        
+        // 【v8新增】停止走路音效
+        if (typeof AudioManager !== 'undefined' && this.walkSoundId >= 0) {
+            AudioManager.stopSoundById(this.walkSoundId);
+            this.walkSoundId = -1;
         }
 
         this.isWaterDropFlying = false;

@@ -156,11 +156,26 @@ window.AudioManager = {
      * @param {string} name - 音频文件名（不含扩展名）
      * @param {string} bundleName - Bundle名称
      * @param {boolean} loop - 是否循环，默认 false
+     * @param {function} callback - 可选回调，参数为audioId
+     * @returns {number} 如果已缓存则返回audioId，否则返回-1（异步加载中）
      */
-    playSoundBundle(name, bundleName, loop = false) {
+    playSoundBundle(name, bundleName, loop = false, callback = null) {
+        const cacheKey = `${bundleName}/${name}`;
+        
+        // 已缓存，直接播放并返回ID
+        if (this.audioCache[cacheKey]) {
+            const audioId = cc.audioEngine.play(this.audioCache[cacheKey], loop, this.soundVolume);
+            if (callback) callback(audioId);
+            return audioId;
+        }
+        
+        // 未缓存，异步加载
         this.loadAudioFromBundle(name, bundleName, (clip) => {
-            cc.audioEngine.play(clip, loop, this.soundVolume);
+            const audioId = cc.audioEngine.play(clip, loop, this.soundVolume);
+            if (callback) callback(audioId);
         });
+        
+        return -1;
     },
 
     /**
