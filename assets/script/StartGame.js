@@ -21,6 +21,7 @@ cc.Class({
             });
         });
 
+        AudioManager.playMusicBundle('sea', 'audio');
         console.log('frameSize', cc.view.getFrameSize());
         console.log('visibleSize', cc.view.getVisibleSize());
         console.log('design', cc.view.getDesignResolutionSize());

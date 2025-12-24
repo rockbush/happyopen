@@ -60,7 +60,7 @@ cc.Class({
         this.drawWaterDropCollider();
     },
     
-    // 绘制TopNode碰撞区域（绿色，只有下半部分）
+    // 绘制TopNode碰撞区域（绿色，只有下半部分，应用缩放）
     drawTopNodeColliders() {
         if (!this.gameManager || !this.gameManager.pillars) return;
         
@@ -73,18 +73,21 @@ cc.Class({
             const pillarScript = pillar.getComponent('Pillar');
             if (!pillarScript || !pillarScript.topNode) continue;
             
+            // 获取 Pillar 的缩放值
+            const pillarScale = pillar.scale || 1;
+            
             // 获取TopNode的世界坐标并转换到当前节点坐标系
-            const topWorldPos = pillar.convertToWorldSpaceAR(pillarScript.topNode.position);
+            const topWorldPos = pillarScript.topNode.convertToWorldSpaceAR(cc.v2(0, 0));
             const topNodePos = this.node.parent.convertToNodeSpaceAR(topWorldPos);
             
-            // 碰撞区域（只有下半部分）
-            const topHalfWidth = pillarScript.topNode.width / 2;
-            const topFullHeight = pillarScript.topNode.height;
+            // 碰撞区域（只有下半部分，应用缩放）
+            const topFullWidth = pillarScript.topNode.width * pillarScale;
+            const topFullHeight = pillarScript.topNode.height * pillarScale;
             
             // 下半部分矩形
-            const rectX = topNodePos.x - topHalfWidth;
+            const rectX = topNodePos.x - topFullWidth / 2;
             const rectY = topNodePos.y - topFullHeight / 2;
-            const rectW = topHalfWidth * 2;
+            const rectW = topFullWidth;
             const rectH = topFullHeight / 2;
             
             // 绘制碰撞区域矩形
@@ -117,9 +120,9 @@ cc.Class({
         
         const waterDropPos = waterDropNode.position;
         
-        // 获取水滴脚本中的碰撞半径，默认25
+        // 获取水滴脚本中的碰撞半径，默认40
         const waterDropScript = waterDropNode.getComponent('WaterDrop');
-        const waterDropRadius = waterDropScript && waterDropScript.collisionRadius ? waterDropScript.collisionRadius : 25;
+        const waterDropRadius = waterDropScript && waterDropScript.collisionRadius ? waterDropScript.collisionRadius : 40;
         
         // 绘制水滴碰撞区域（红色圆形）
         this.graphics.strokeColor = this.waterDropColor;

@@ -575,7 +575,7 @@ cc.Class({
 
     drawPreviewTrajectory(dragOffset) {
         this.previewLine.clear();
-        this.previewLine.strokeColor = cc.color(0, 191, 255);
+        this.previewLine.strokeColor = cc.Color.WHITE;
         this.previewLine.lineWidth = 3;
 
         const velocity = dragOffset.mul(-this.launchPower);
@@ -587,6 +587,13 @@ cc.Class({
 
         let vel = velocity.clone();
 
+        // 虚线参数
+        const dashLength = 15;    // 实线段长度
+        const gapLength = 10;     // 空隙长度
+        let drawDistance = 0;     // 累计绘制距离
+        let lastPos = pos.clone();
+        let isDrawing = true;     // 当前是否在绘制实线段
+
         this.previewLine.moveTo(pos.x, pos.y);
 
         for (let i = 0; i < steps; i++) {
@@ -594,7 +601,26 @@ cc.Class({
             pos.x += vel.x * dt;
             pos.y += vel.y * dt;
 
-            this.previewLine.lineTo(pos.x, pos.y);
+            // 计算这一步的距离
+            const segmentDist = pos.sub(lastPos).mag();
+            drawDistance += segmentDist;
+
+            // 虚线逻辑
+            if (isDrawing) {
+                this.previewLine.lineTo(pos.x, pos.y);
+                if (drawDistance >= dashLength) {
+                    drawDistance = 0;
+                    isDrawing = false;
+                }
+            } else {
+                this.previewLine.moveTo(pos.x, pos.y);
+                if (drawDistance >= gapLength) {
+                    drawDistance = 0;
+                    isDrawing = true;
+                }
+            }
+
+            lastPos = pos.clone();
 
             if (pos.y < -400) break;
         }
