@@ -26,7 +26,7 @@ cc.Class({
         launchPower: 20,         // 发射力量
 
         // 猴子在屏幕左侧的固定位置（距离屏幕左边的像素）
-        monkeyScreenOffsetX: 100,
+        monkeyScreenOffsetX: 180,
 
         // UI
         scoreLabel: cc.Label,
@@ -141,7 +141,7 @@ cc.Class({
         // 初始化游戏
         this.initGame();
 
-        // 【v6修复】初始化摄像机位置，确保能看到猴子
+        // 摄像机位置：让猴子显示在屏幕左侧 monkeyScreenOffsetX 的位置
         this.initialCameraX = this.monkey.x + this.designHalfWidth - this.monkeyScreenOffsetX;
         this.cameraNode.x = this.initialCameraX;
 
@@ -280,7 +280,7 @@ cc.Class({
         this.monkey = cc.instantiate(this.monkeyPrefab);
         this.monkey.parent = this.node;
 
-        // 【v6修复】使用设计分辨率计算猴子位置
+        // 猴子位置：离屏幕左边 monkeyScreenOffsetX 像素
         const initialMonkeyX = -this.designHalfWidth + this.monkeyScreenOffsetX;
         this.monkeyStartPos = cc.v2(initialMonkeyX, 0);
         this.monkey.position = this.monkeyStartPos;
@@ -296,10 +296,10 @@ cc.Class({
 
         this.monkeyScript = this.monkey.getComponent('Monkey');
 
-        console.log('🐵 猴子创建完成，位置:', this.monkey.position);
+        console.log('🐵 猴子创建完成，位置:', this.monkey.position, '屏幕偏移:', this.monkeyScreenOffsetX);
     },
 
-    // 【新增】起始柱子：顶部表面对齐猴子底部（monkey.y）
+    // 【新增】起始柱子：让猴子站在standPoint位置
     createStartPillarUnderMonkey() {
         if (!this.pillarPrefab || !this.monkey) return;
 
@@ -315,26 +315,33 @@ cc.Class({
         const pillarScript = pillar.getComponent('Pillar');
         pillarScript.gameManager = this;
 
-        // 起始柱子高度：可以固定，也可以用随机，但要确保在范围内
-        const extra = 200; // 起始柱子额外加长的像素
+        // 起始柱子高度
+        const extra = 200;
         let height = this.minPillarHeight + Math.random() * (this.maxPillarHeight - this.minPillarHeight);
         height += extra;
-
-        // const height = this.minPillarHeight + Math.random() * (this.maxPillarHeight - this.minPillarHeight);
         pillarScript.setHeight(height);
 
-        // 对齐逻辑（沿用你命中计算的假设：topNodeY = pillar.y + pillarHeight，顶部表面再 + topNodeHalfHeight）
-        // 猴子锚点是 (0.5,0)，底部就是 monkey.y
-        const monkeyBottomY = this.monkey.y;
-        const topNodeHalfHeight = 10; // 你原逻辑里也用 10（保持一致）
-
-        // pillarHeight 在 Pillar 脚本里一般会被 setHeight(height) 赋值/更新
         const pillarHeight = pillarScript.pillarHeight != null ? pillarScript.pillarHeight : height;
 
-        // 让：pillar.y + pillarHeight + topHalf = monkeyBottomY  =>  pillar.y = monkeyBottomY - pillarHeight - topHalf
-        const pillarY = monkeyBottomY - pillarHeight - topNodeHalfHeight;
-
-        pillar.position = cc.v2(this.monkey.x, pillarY);
+        // 如果有 standPoint，用它来对齐猴子位置
+        if (pillarScript.standPoint) {
+            // standPoint 在 topNode 下的本地坐标
+            const standLocalPos = pillarScript.standPoint.position;
+            // topNode 的 Y 位置 = pillarHeight
+            // standPoint 世界坐标相对于柱子 = (topNode.x + standPoint.x, topNode.y + standPoint.y)
+            // 柱子位置需要满足：猴子位置 = 柱子位置 + standPoint相对柱子的偏移
+            // 所以：柱子X = 猴子X - standPoint.x
+            //      柱子Y = 猴子Y - (pillarHeight + standPoint.y)
+            const pillarX = this.monkey.x - standLocalPos.x;
+            const pillarY = this.monkey.y - pillarHeight - standLocalPos.y;
+            pillar.position = cc.v2(pillarX, pillarY);
+        } else {
+            // 兜底：原来的对齐方式
+            const monkeyBottomY = this.monkey.y;
+            const topNodeHalfHeight = 10;
+            const pillarY = monkeyBottomY - pillarHeight - topNodeHalfHeight;
+            pillar.position = cc.v2(this.monkey.x, pillarY);
+        }
 
         // 放进 pillars 队列，作为第 0 根柱子
         this.pillars.unshift(pillar);
@@ -679,11 +686,21 @@ cc.Class({
 
             if (targetPillar) {
                 const pillarScript = targetPillar.getComponent('Pillar');
-                const topNodeY = targetPillar.y + pillarScript.pillarHeight;
-                const topNodeHalfHeight = 10;
-                const monkeyOffsetY = 5;
-                const targetY = topNodeY + topNodeHalfHeight + monkeyOffsetY;
-                const finalTargetPos = cc.v2(targetPillar.x, targetY);
+                
+                // 使用 standPoint 计算目标位置
+                let finalTargetPos;
+                if (pillarScript.standPoint) {
+                    // 获取 standPoint 的世界坐标，转换到游戏节点坐标系
+                    const standWorldPos = pillarScript.getStandPointWorldPos();
+                    finalTargetPos = this.node.convertToNodeSpaceAR(standWorldPos);
+                } else {
+                    // 兜底：使用原来的计算方式
+                    const topNodeY = targetPillar.y + pillarScript.pillarHeight;
+                    const topNodeHalfHeight = 10;
+                    const monkeyOffsetY = 5;
+                    const targetY = topNodeY + topNodeHalfHeight + monkeyOffsetY;
+                    finalTargetPos = cc.v2(targetPillar.x, targetY);
+                }
 
                 console.log('🎯 目标位置:', finalTargetPos);
 

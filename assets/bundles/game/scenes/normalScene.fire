@@ -1591,7 +1591,7 @@
       "__id__": 32
     },
     "_children": [],
-    "_active": false,
+    "_active": true,
     "_components": [
       {
         "__id__": 34
@@ -1699,7 +1699,7 @@
     "maxPillarHeight": 300,
     "pillarWidth": 80,
     "launchPower": 14,
-    "monkeyScreenOffsetX": 100,
+    "monkeyScreenOffsetX": 200,
     "scoreLabel": {
       "__id__": 18
     },
