@@ -314,6 +314,10 @@ cc.Class({
 
         const pillarScript = pillar.getComponent('Pillar');
         pillarScript.gameManager = this;
+        
+        // 【v8新增】起始柱子不移动、不随机缩放
+        pillarScript.enableMoving = false;
+        pillar.scale = 1.0;  // 固定缩放为1
 
         // 起始柱子高度
         const extra = 200;
@@ -686,6 +690,11 @@ cc.Class({
 
             if (targetPillar) {
                 const pillarScript = targetPillar.getComponent('Pillar');
+                
+                // 【v8新增】命中后停止topNode移动
+                if (pillarScript.stopMoving) {
+                    pillarScript.stopMoving();
+                }
                 
                 // 使用 standPoint 计算目标位置
                 let finalTargetPos;

@@ -557,6 +557,8 @@
       "__id__": 6
     },
     "gameManager": null,
+    "topNodeMoveSpeed": 80,
+    "enableMoving": true,
     "_id": ""
   },
   {
