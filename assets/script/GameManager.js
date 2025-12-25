@@ -36,6 +36,13 @@ cc.Class({
 
         // UI
         scoreLabel: cc.Label,
+        
+        // 【v10】剩余发射次数Label
+        launchCountLabel: {
+            default: null,
+            type: cc.Label,
+            tooltip: '剩余发射次数显示（挂在Canvas下，不跟随摄像机）'
+        },
 
         // 【新增】无限背景节点
         infiniteBackground: cc.Node,
@@ -85,6 +92,18 @@ cc.Class({
             default: null,
             type: cc.Node,
             tooltip: '海浪背景节点（挂载InfiniteWave脚本）'
+        },
+        
+        // 【v10新增】最大发射次数
+        maxLaunchCount: {
+            default: 10,
+            tooltip: '最大发射次数'
+        },
+        
+        // 【v10新增】拖拽倒计时（秒）
+        dragCountdown: {
+            default: 5,
+            tooltip: '拖拽后必须在此时间内发射'
         }
     },
 
@@ -123,6 +142,13 @@ cc.Class({
         this.pathPoints = [];
         this.walkSoundId = -1;  // 【v8新增】走路音效ID
         this.totalPillarsGenerated = 0;  // 【v9新增】已生成柱子总数（用于速度递增）
+        
+        // 【v10新增】发射次数和倒计时
+        this.remainingLaunches = this.maxLaunchCount;  // 剩余发射次数
+        this.countdownTimer = null;  // 倒计时定时器
+        this.isCountingDown = false;  // 是否正在倒计时
+        this.pendingLaunchConsume = false;  // 待扣除发射次数
+        this.isGameOver = false;  // 游戏是否结束
 
         // 【新增】摄像机拖拽相关变量
         this.isCameraDragging = false;
@@ -166,6 +192,9 @@ cc.Class({
         if (typeof AudioManager !== 'undefined') {
             AudioManager.playMusicBundle('background', 'audio');
         }
+        
+        // 【v10新增】创建UI元素
+        this.createGameUI();
     },
 
     // 打印世界信息
@@ -438,6 +467,9 @@ cc.Class({
     },
 
     onTouchStart(event) {
+        // 【v10】游戏结束时不响应
+        if (this.isGameOver) return;
+        
         // 停止惯性
         this.cameraVelocity = cc.v2(0, 0);
         this.cameraNode.stopAllActions();
@@ -466,6 +498,9 @@ cc.Class({
             if (typeof AudioManager !== 'undefined') {
                 AudioManager.playSoundBundle('drift', 'audio');
             }
+            
+            // 【v10】开始倒计时
+            this.startDragCountdown();
             
             console.log('🎯 开始拖拽');
         }
@@ -573,6 +608,9 @@ cc.Class({
         }
 
         if (!this.isDragging) return;
+        
+        // 【v10】停止倒计时
+        this.stopDragCountdown();
 
         console.log('🚀 松手，准备发射');
 
@@ -600,6 +638,9 @@ cc.Class({
         if (typeof AudioManager !== 'undefined') {
             AudioManager.playSoundBundle('shot', 'audio');
         }
+        
+        // 【v10】标记这次发射待扣除（如果命中则不扣）
+        this.pendingLaunchConsume = true;
 
         this.launchWaterDrop();
     },
@@ -731,6 +772,9 @@ cc.Class({
         console.log('💧 水滴落地，命中柱子:', landedOnPillar);
 
         if (landedOnPillar) {
+            // 【v10】命中了，不扣发射次数
+            this.pendingLaunchConsume = false;
+            
             this.score += 100;
             this.updateUI();
             
@@ -782,6 +826,12 @@ cc.Class({
                 }, 0.1);
             }
         } else {
+            // 【v10】未命中，扣发射次数
+            if (this.pendingLaunchConsume) {
+                this.pendingLaunchConsume = false;
+                this.consumeLaunch();
+            }
+            
             console.log('❌ 未命中，再试一次');
             this.pathPoints = [];
         }
@@ -1070,6 +1120,309 @@ cc.Class({
         if (this.scoreLabel) {
             this.scoreLabel.string = '得分: ' + this.score;
         }
+    },
+    
+    // ==================== 【v10】游戏UI系统 ====================
+    
+    createGameUI() {
+        // 剩余次数显示：优先使用挂载的Label，否则自动创建
+        if (this.launchCountLabel) {
+            // 使用挂载的Label
+            this.launchCountLabel.string = '剩余: ' + this.remainingLaunches;
+        } else {
+            // 自动创建（顶部中间）
+            this.launchCountNode = new cc.Node('LaunchCount');
+            this.launchCountNode.parent = cc.find('Canvas');
+            this.launchCountNode.setPosition(0, 320);
+            this.launchCountNode.zIndex = 100;
+            const countLabel = this.launchCountNode.addComponent(cc.Label);
+            countLabel.string = '剩余: ' + this.remainingLaunches;
+            countLabel.fontSize = 36;
+            countLabel.lineHeight = 36;
+            countLabel.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+            this.launchCountNode.color = cc.Color.WHITE;
+            const countOutline = this.launchCountNode.addComponent(cc.LabelOutline);
+            countOutline.color = cc.color(0, 0, 0);
+            countOutline.width = 3;
+        }
+        
+        // 创建倒计时显示（屏幕中上方）
+        this.countdownNode = new cc.Node('Countdown');
+        this.countdownNode.parent = cc.find('Canvas');
+        this.countdownNode.setPosition(0, 200);
+        this.countdownNode.zIndex = 100;
+        const cdLabel = this.countdownNode.addComponent(cc.Label);
+        cdLabel.string = '';
+        cdLabel.fontSize = 72;
+        cdLabel.lineHeight = 72;
+        cdLabel.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+        this.countdownNode.color = cc.Color.WHITE;
+        const cdOutline = this.countdownNode.addComponent(cc.LabelOutline);
+        cdOutline.color = cc.color(0, 0, 0);
+        cdOutline.width = 4;
+        this.countdownNode.active = false;
+        
+        // 创建提示文字节点（屏幕中央）
+        this.tipNode = new cc.Node('Tip');
+        this.tipNode.parent = cc.find('Canvas');
+        this.tipNode.setPosition(0, 0);
+        this.tipNode.zIndex = 100;
+        const tipLabel = this.tipNode.addComponent(cc.Label);
+        tipLabel.string = '';
+        tipLabel.fontSize = 60;
+        tipLabel.lineHeight = 60;
+        tipLabel.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+        this.tipNode.color = cc.color(255, 100, 100);
+        const tipOutline = this.tipNode.addComponent(cc.LabelOutline);
+        tipOutline.color = cc.color(0, 0, 0);
+        tipOutline.width = 3;
+        this.tipNode.active = false;
+        
+        // 创建游戏结束遮罩（初始隐藏）
+        this.createGameOverMask();
+    },
+    
+    createGameOverMask() {
+        this.gameOverMask = new cc.Node('GameOverMask');
+        this.gameOverMask.parent = cc.find('Canvas');
+        this.gameOverMask.zIndex = 9999;
+        this.gameOverMask.setContentSize(1280, 720);
+        
+        // 黑色背景
+        const bg = this.gameOverMask.addComponent(cc.Graphics);
+        bg.fillColor = cc.color(0, 0, 0, 255);
+        bg.rect(-640, -360, 1280, 720);
+        bg.fill();
+        
+        // 游戏结束文字
+        const textNode = new cc.Node('GameOverText');
+        textNode.parent = this.gameOverMask;
+        textNode.y = 50;
+        const label = textNode.addComponent(cc.Label);
+        label.string = '游戏结束';
+        label.fontSize = 80;
+        label.lineHeight = 80;
+        label.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+        textNode.color = cc.Color.WHITE;
+        
+        // 得分文字
+        const scoreNode = new cc.Node('FinalScore');
+        scoreNode.parent = this.gameOverMask;
+        scoreNode.y = -50;
+        this.finalScoreLabel = scoreNode.addComponent(cc.Label);
+        this.finalScoreLabel.string = '得分: 0';
+        this.finalScoreLabel.fontSize = 50;
+        this.finalScoreLabel.lineHeight = 50;
+        this.finalScoreLabel.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+        scoreNode.color = cc.Color.WHITE;
+        
+        // 点击提示
+        const hintNode = new cc.Node('Hint');
+        hintNode.parent = this.gameOverMask;
+        hintNode.y = -150;
+        const hintLabel = hintNode.addComponent(cc.Label);
+        hintLabel.string = '点击屏幕返回';
+        hintLabel.fontSize = 36;
+        hintLabel.lineHeight = 36;
+        hintLabel.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+        hintNode.color = cc.color(180, 180, 180);
+        
+        // 初始隐藏
+        this.gameOverMask.opacity = 0;
+        this.gameOverMask.active = false;
+    },
+    
+    // ==================== 【v10】发射次数系统 ====================
+    
+    updateLaunchCountUI() {
+        // 优先使用挂载的Label
+        if (this.launchCountLabel) {
+            this.launchCountLabel.string = '剩余: ' + this.remainingLaunches;
+        } else if (this.launchCountNode) {
+            const label = this.launchCountNode.getComponent(cc.Label);
+            if (label) {
+                label.string = '剩余: ' + this.remainingLaunches;
+            }
+        }
+    },
+    
+    consumeLaunch() {
+        this.remainingLaunches--;
+        this.updateLaunchCountUI();
+        console.log('🎯 剩余发射次数:', this.remainingLaunches);
+        
+        if (this.remainingLaunches <= 0) {
+            // 延迟一点触发游戏结束，让玩家看到最后一次发射
+            this.scheduleOnce(() => {
+                this.triggerGameOver();
+            }, 0.5);
+        }
+    },
+    
+    // ==================== 【v10】倒计时系统 ====================
+    
+    startDragCountdown() {
+        // 先清除可能存在的旧定时器
+        this.stopDragCountdown();
+        
+        this.currentCountdown = this.dragCountdown;
+        this.isCountingDown = true;  // 标记正在倒计时
+        
+        // 显示倒计时
+        if (this.countdownNode) {
+            this.countdownNode.active = true;
+            this.updateCountdownDisplay();
+        }
+        
+        // 使用 scheduleOnce 递归实现更可靠的倒计时
+        this.countdownTick();
+    },
+    
+    countdownTick() {
+        // 检查是否应该继续倒计时
+        if (!this.isCountingDown) return;
+        
+        this.countdownCallback = () => {
+            // 再次检查状态
+            if (!this.isCountingDown) return;
+            
+            this.currentCountdown--;
+            this.updateCountdownDisplay();
+            
+            if (this.currentCountdown <= 0) {
+                this.onDragTimeout();
+            } else {
+                // 继续下一秒
+                this.countdownTick();
+            }
+        };
+        
+        this.scheduleOnce(this.countdownCallback, 1);
+    },
+    
+    stopDragCountdown() {
+        this.isCountingDown = false;  // 标记停止倒计时
+        
+        // 取消倒计时回调
+        if (this.countdownCallback) {
+            this.unschedule(this.countdownCallback);
+            this.countdownCallback = null;
+        }
+        
+        // 隐藏倒计时
+        if (this.countdownNode) {
+            this.countdownNode.active = false;
+        }
+    },
+    
+    updateCountdownDisplay() {
+        if (this.countdownNode) {
+            const label = this.countdownNode.getComponent(cc.Label);
+            if (label) {
+                label.string = this.currentCountdown.toString();
+            }
+            // 最后2秒变红
+            if (this.currentCountdown <= 2) {
+                this.countdownNode.color = cc.Color.RED;
+            } else {
+                this.countdownNode.color = cc.Color.WHITE;
+            }
+        }
+    },
+    
+    onDragTimeout() {
+        console.log('⏰ 拖拽超时！');
+        
+        this.stopDragCountdown();
+        
+        // 取消拖拽状态
+        this.isDragging = false;
+        this.previewLine.clear();
+        
+        // 隐藏拖拽相关UI
+        if (this.slingshotIndicator) {
+            const script = this.slingshotIndicator.getComponent('SlingshotIndicator');
+            if (script && script.hide) {
+                script.hide();
+            } else {
+                this.slingshotIndicator.active = false;
+            }
+        }
+        
+        if (this.dragLine) {
+            const dragLineScript = this.dragLine.getComponent('DragLine');
+            if (dragLineScript) {
+                dragLineScript.hide();
+            }
+        }
+        
+        if (this.monkeyScript) {
+            this.monkeyScript.resetHeadDirection();
+            this.monkeyScript.stopDragging();
+        }
+        
+        // 显示"发射失败"提示
+        this.showTip('发射失败');
+    },
+    
+    showTip(text) {
+        if (this.tipNode) {
+            const label = this.tipNode.getComponent(cc.Label);
+            if (label) {
+                label.string = text;
+            }
+            this.tipNode.active = true;
+            this.tipNode.opacity = 255;
+            
+            // 2秒后淡出消失
+            this.tipNode.runAction(cc.sequence(
+                cc.delayTime(1.5),
+                cc.fadeOut(0.5),
+                cc.callFunc(() => {
+                    this.tipNode.active = false;
+                })
+            ));
+        }
+    },
+    
+    // ==================== 【v10】游戏结束系统 ====================
+    
+    triggerGameOver() {
+        if (this.isGameOver) return;
+        this.isGameOver = true;
+        
+        console.log('💀 游戏结束！最终得分:', this.score);
+        
+        // 停止背景音乐
+        if (typeof AudioManager !== 'undefined') {
+            AudioManager.stopMusic();
+        }
+        
+        // 更新最终得分
+        if (this.finalScoreLabel) {
+            this.finalScoreLabel.string = '得分: ' + this.score;
+        }
+        
+        // 显示游戏结束遮罩
+        this.gameOverMask.active = true;
+        this.gameOverMask.runAction(cc.fadeTo(1.5, 220));
+        
+        // 2秒后允许点击返回
+        this.scheduleOnce(() => {
+            this.gameOverMask.on(cc.Node.EventType.TOUCH_END, this.onGameOverTap, this);
+        }, 2);
+    },
+    
+    onGameOverTap() {
+        this.gameOverMask.off(cc.Node.EventType.TOUCH_END, this.onGameOverTap, this);
+        
+        // 停止所有音频
+        if (typeof AudioManager !== 'undefined') {
+            AudioManager.stopAll();
+        }
+        
+        // 返回begin场景
+        cc.director.loadScene('begin');
     },
 
     onDestroy() {
