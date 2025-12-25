@@ -21,6 +21,12 @@ cc.Class({
         minPillarHeight: 100,    // 最小柱子高度
         maxPillarHeight: 300,    // 最大柱子高度
         pillarWidth: 80,         // 柱子宽度
+        
+        // 【v9新增】topNode移动速度递增参数
+        baseMinSpeed: 30,        // 初始最小速度
+        baseMaxSpeed: 50,        // 初始最大速度
+        speedIncrement: 10,      // 每根柱子速度范围增加量
+        maxSpeedLimit: 200,      // 速度上限
 
         // 发射参数
         launchPower: 20,         // 发射力量
@@ -116,6 +122,7 @@ cc.Class({
         this.isMonkeyMoving = false;
         this.pathPoints = [];
         this.walkSoundId = -1;  // 【v8新增】走路音效ID
+        this.totalPillarsGenerated = 0;  // 【v9新增】已生成柱子总数（用于速度递增）
 
         // 【新增】摄像机拖拽相关变量
         this.isCameraDragging = false;
@@ -391,13 +398,20 @@ cc.Class({
             pillar.position = cc.v2(x, y);
 
             const pillarScript = pillar.getComponent('Pillar');
+            
+            // 【v9新增】根据柱子序号设置速度范围（序号越大，速度范围越大）
+            const pillarIndex = this.pillars.length;  // 当前柱子序号
+            const minSpeed = Math.min(this.baseMinSpeed + pillarIndex * this.speedIncrement, this.maxSpeedLimit);
+            const maxSpeed = Math.min(this.baseMaxSpeed + pillarIndex * this.speedIncrement, this.maxSpeedLimit);
+            pillarScript.setSpeedRange(minSpeed, maxSpeed);
+            
             pillarScript.setHeight(height);
             pillarScript.gameManager = this;
 
             this.pillars.push(pillar);
 
             const isOnScreen = x >= -this.designHalfWidth && x <= this.designHalfWidth;
-            console.log('🏛️ 柱子', (i + 1), '| X:', x.toFixed(0), '| 间距:', distance.toFixed(0), '|', isOnScreen ? '📺 屏幕内' : '🔭 屏幕外');
+            console.log('🏛️ 柱子', (i + 1), '| X:', x.toFixed(0), '| 间距:', distance.toFixed(0), '| 速度范围:', minSpeed.toFixed(0), '~', maxSpeed.toFixed(0), '|', isOnScreen ? '📺 屏幕内' : '🔭 屏幕外');
 
             lastX = x;
         }
@@ -1006,12 +1020,20 @@ cc.Class({
             pillar.position = cc.v2(lastX + distance, -360);
 
             const pillarScript = pillar.getComponent('Pillar');
+            
+            // 【v9新增】根据已生成柱子总数设置速度范围
+            const pillarIndex = this.totalPillarsGenerated || this.pillars.length;
+            const minSpeed = Math.min(this.baseMinSpeed + pillarIndex * this.speedIncrement, this.maxSpeedLimit);
+            const maxSpeed = Math.min(this.baseMaxSpeed + pillarIndex * this.speedIncrement, this.maxSpeedLimit);
+            pillarScript.setSpeedRange(minSpeed, maxSpeed);
+            
             pillarScript.setHeight(height);
             pillarScript.gameManager = this;
 
             this.pillars.push(pillar);
+            this.totalPillarsGenerated = (this.totalPillarsGenerated || 0) + 1;
 
-            console.log('🏛️ 新柱子 | X:', pillar.x.toFixed(0));
+            console.log('🏛️ 新柱子 | X:', pillar.x.toFixed(0), '| 速度范围:', minSpeed.toFixed(0), '~', maxSpeed.toFixed(0));
         }
         console.log('========== 柱子更新完成 ==========');
     },

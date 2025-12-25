@@ -51,6 +51,8 @@ const AudioUtil = {
 
     const url = cc.url.raw(rawPathWithExt);
 
+    const mymusic = cc.loadBundle.loadmp3
+
     const clip = await new Promise((resolve, reject) => {
       // 2.4 微信环境下可用：从 url 直接加载 AudioClip
       cc.loader.load(url, (err, asset) => {

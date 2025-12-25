@@ -97,7 +97,7 @@
       "__id__": 1
     },
     "_children": [],
-    "_active": true,
+    "_active": false,
     "_components": [
       {
         "__id__": 3
@@ -482,7 +482,7 @@
     "asset": {
       "__id__": 0
     },
-    "fileId": "11lvdvHOVK9oAolvR82b8O",
+    "fileId": "48QeGi3GNMwbXg5cm+dhRG",
     "sync": false
   },
   {
@@ -558,6 +558,8 @@
     },
     "gameManager": null,
     "topNodeMoveSpeed": 80,
+    "minSpeed": 40,
+    "maxSpeed": 120,
     "enableMoving": true,
     "_id": ""
   },

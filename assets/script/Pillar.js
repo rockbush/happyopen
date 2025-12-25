@@ -38,6 +38,16 @@ cc.Class({
             tooltip: 'topNode上下移动速度（像素/秒）'
         },
         
+        // 速度范围（由GameManager根据柱子序号设置）
+        minSpeed: {
+            default: 40,
+            tooltip: '最小移动速度'
+        },
+        maxSpeed: {
+            default: 120,
+            tooltip: '最大移动速度'
+        },
+        
         // 是否启用移动（起始柱子不移动）
         enableMoving: {
             default: true,
@@ -62,9 +72,23 @@ cc.Class({
         if (this.enableMoving) {
             // 随机缩放（0.5-1.0，0.1递进）
             this.randomizeScale();
+            // 随机速度（在minSpeed和maxSpeed之间）
+            this.randomizeSpeed();
             // 开始移动
             this.startMoving();
         }
+    },
+    
+    // 随机设置速度
+    randomizeSpeed() {
+        this.topNodeMoveSpeed = this.minSpeed + Math.random() * (this.maxSpeed - this.minSpeed);
+        console.log('🚀 移动速度:', this.topNodeMoveSpeed.toFixed(0), '范围:', this.minSpeed, '~', this.maxSpeed);
+    },
+    
+    // 设置速度范围（由GameManager调用）
+    setSpeedRange(min, max) {
+        this.minSpeed = min;
+        this.maxSpeed = max;
     },
     
     // 随机设置缩放
@@ -86,17 +110,17 @@ cc.Class({
             this.bodyNode.y = 0;
         }
         
-        // ========== 调整顶部装饰 top ==========
-        // top 固定在 bodyNode 顶部，不随 topNode 移动
-        if (this.top) {
-            // top 锚点在底部中心(0.5, 0)，所以 y = bodyNode顶部 = height
-            this.top.y = height;
-        }
-        
         // ========== 调整平台 topNode ==========
         if (this.topNode) {
             // topNode 初始位置在 bodyNode 顶部
             this.topNode.y = height;
+        }
+        
+        // ========== 调整顶部装饰 top ==========
+        // top 底部对齐 topNode 中心(0.5, 0.5)，跟随 topNode 移动
+        if (this.top) {
+            // top 锚点在底部中心(0.5, 0)，所以 y = topNode.y
+            this.top.y = this.topNode ? this.topNode.y : height;
         }
         
         // ========== 计算移动范围 ==========
@@ -147,16 +171,23 @@ cc.Class({
     update(dt) {
         if (!this.isMoving || this.isHit || !this.topNode || !this.enableMoving) return;
         
-        // 移动 topNode（独立移动，不带动 top）
+        // 移动 topNode
         const moveAmount = this.topNodeMoveSpeed * dt * this.moveDirection;
         this.topNode.y += moveAmount;
+        
+        // top 跟随 topNode 移动，top底部对齐topNode中心(0.5, 0.5)
+        if (this.top) {
+            this.top.y = this.topNode.y;
+        }
         
         // 边界检测，反向
         if (this.topNode.y >= this.topNodeMaxY) {
             this.topNode.y = this.topNodeMaxY;
+            if (this.top) this.top.y = this.topNodeMaxY;
             this.moveDirection = -1;
         } else if (this.topNode.y <= this.topNodeMinY) {
             this.topNode.y = this.topNodeMinY;
+            if (this.top) this.top.y = this.topNodeMinY;
             this.moveDirection = 1;
         }
     },
