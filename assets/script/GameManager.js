@@ -111,6 +111,13 @@ cc.Class({
             default: null,
             type: cc.Node,
             tooltip: '倒计时UI节点，需包含一个子Label节点用于显示数字'
+        },
+        
+        // 【v11新增】GameOver预制体
+        gameOverPrefab: {
+            default: null,
+            type: cc.Prefab,
+            tooltip: 'GameOver界面预制体'
         }
     },
 
@@ -321,7 +328,7 @@ cc.Class({
     },
 
     // ==========================
-    // 关键改动：初始化时先创建猴子，再创建“起始柱子”，再生成右侧随机柱子
+    // 关键改动：初始化时先创建猴子，再创建"起始柱子"，再生成右侧随机柱子
     // ==========================
     initGame() {
         this.createMonkey();
@@ -1225,59 +1232,6 @@ cc.Class({
         tipOutline.color = cc.color(0, 0, 0);
         tipOutline.width = 3;
         this.tipNode.active = false;
-        
-        // 创建游戏结束遮罩（初始隐藏）
-        this.createGameOverMask();
-    },
-    
-    createGameOverMask() {
-        this.gameOverMask = new cc.Node('GameOverMask');
-        this.gameOverMask.parent = cc.find('Canvas');
-        this.gameOverMask.zIndex = 9999;
-        this.gameOverMask.setContentSize(1280, 720);
-        
-        // 黑色背景
-        const bg = this.gameOverMask.addComponent(cc.Graphics);
-        bg.fillColor = cc.color(0, 0, 0, 255);
-        bg.rect(-640, -360, 1280, 720);
-        bg.fill();
-        
-        // 游戏结束文字
-        const textNode = new cc.Node('GameOverText');
-        textNode.parent = this.gameOverMask;
-        textNode.y = 50;
-        const label = textNode.addComponent(cc.Label);
-        label.string = '游戏结束';
-        label.fontSize = 80;
-        label.lineHeight = 80;
-        label.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
-        textNode.color = cc.Color.WHITE;
-        
-        // 得分文字
-        const scoreNode = new cc.Node('FinalScore');
-        scoreNode.parent = this.gameOverMask;
-        scoreNode.y = -50;
-        this.finalScoreLabel = scoreNode.addComponent(cc.Label);
-        this.finalScoreLabel.string = '得分: 0';
-        this.finalScoreLabel.fontSize = 50;
-        this.finalScoreLabel.lineHeight = 50;
-        this.finalScoreLabel.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
-        scoreNode.color = cc.Color.WHITE;
-        
-        // 点击提示
-        const hintNode = new cc.Node('Hint');
-        hintNode.parent = this.gameOverMask;
-        hintNode.y = -150;
-        const hintLabel = hintNode.addComponent(cc.Label);
-        hintLabel.string = '点击屏幕返回';
-        hintLabel.fontSize = 36;
-        hintLabel.lineHeight = 36;
-        hintLabel.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
-        hintNode.color = cc.color(180, 180, 180);
-        
-        // 初始隐藏
-        this.gameOverMask.opacity = 0;
-        this.gameOverMask.active = false;
     },
     
     // ==================== 【v10】发射次数系统 ====================
@@ -1431,7 +1385,7 @@ cc.Class({
         }
     },
     
-    // ==================== 【v10】游戏结束系统 ====================
+    // ==================== 【v11】游戏结束系统（使用预制体） ====================
     
     triggerGameOver() {
         if (this.isGameOver) return;
@@ -1444,31 +1398,97 @@ cc.Class({
             AudioManager.stopMusic();
         }
         
-        // 更新最终得分
-        if (this.finalScoreLabel) {
-            this.finalScoreLabel.string = '得分: ' + this.score;
+        // 【v11修改】使用预制体显示GameOver界面
+        if (this.gameOverPrefab) {
+            // 实例化预制体
+            const gameOverNode = cc.instantiate(this.gameOverPrefab);
+            gameOverNode.parent = cc.find('Canvas');
+            gameOverNode.zIndex = 9999;
+            
+            // 【修复】强制设置位置和锚点，确保居中
+            gameOverNode.setPosition(0, 0);
+            gameOverNode.anchorX = 0.5;
+            gameOverNode.anchorY = 0.5;
+            
+            // 如果预制体有Widget组件，先禁用它
+            const widget = gameOverNode.getComponent(cc.Widget);
+            if (widget) {
+                widget.enabled = false;
+            }
+            
+            // 获取脚本组件并设置分数
+            const gameOverScript = gameOverNode.getComponent('GameOver');
+            if (gameOverScript) {
+                gameOverScript.setScore(this.score);
+                gameOverScript.show();
+            }
+        } else {
+            // 后备方案：如果没有预制体，使用简单的遮罩方式
+            console.warn('⚠️ 未设置GameOver预制体，使用默认遮罩');
+            this.showDefaultGameOver();
         }
+    },
+    
+    // 【v11新增】默认游戏结束显示（后备方案）
+    showDefaultGameOver() {
+        // 创建简单的游戏结束遮罩
+        const mask = new cc.Node('GameOverMask');
+        mask.parent = cc.find('Canvas');
+        mask.zIndex = 9999;
+        mask.setContentSize(1280, 720);
         
-        // 显示游戏结束遮罩
-        this.gameOverMask.active = true;
-        this.gameOverMask.runAction(cc.fadeTo(1.5, 220));
+        // 黑色半透明背景
+        const bg = mask.addComponent(cc.Graphics);
+        bg.fillColor = cc.color(0, 0, 0, 200);
+        bg.rect(-640, -360, 1280, 720);
+        bg.fill();
+        
+        // 游戏结束文字
+        const textNode = new cc.Node('GameOverText');
+        textNode.parent = mask;
+        textNode.y = 50;
+        const label = textNode.addComponent(cc.Label);
+        label.string = '游戏结束';
+        label.fontSize = 80;
+        label.lineHeight = 80;
+        label.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+        textNode.color = cc.Color.WHITE;
+        
+        // 得分文字
+        const scoreNode = new cc.Node('FinalScore');
+        scoreNode.parent = mask;
+        scoreNode.y = -50;
+        const scoreLabel = scoreNode.addComponent(cc.Label);
+        scoreLabel.string = '得分: ' + this.score;
+        scoreLabel.fontSize = 50;
+        scoreLabel.lineHeight = 50;
+        scoreLabel.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+        scoreNode.color = cc.Color.WHITE;
+        
+        // 点击提示
+        const hintNode = new cc.Node('Hint');
+        hintNode.parent = mask;
+        hintNode.y = -150;
+        const hintLabel = hintNode.addComponent(cc.Label);
+        hintLabel.string = '点击屏幕返回';
+        hintLabel.fontSize = 36;
+        hintLabel.lineHeight = 36;
+        hintLabel.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+        hintNode.color = cc.color(180, 180, 180);
+        
+        // 淡入动画
+        mask.opacity = 0;
+        mask.runAction(cc.fadeTo(0.5, 255));
         
         // 2秒后允许点击返回
         this.scheduleOnce(() => {
-            this.gameOverMask.on(cc.Node.EventType.TOUCH_END, this.onGameOverTap, this);
+            mask.on(cc.Node.EventType.TOUCH_END, () => {
+                if (typeof AudioManager !== 'undefined') {
+                    AudioManager.stopAll();
+                }
+                cc.director.loadScene('begin');
+            });
         }, 2);
-    },
-    
-    onGameOverTap() {
-        this.gameOverMask.off(cc.Node.EventType.TOUCH_END, this.onGameOverTap, this);
-        
-        // 停止所有音频
-        if (typeof AudioManager !== 'undefined') {
-            AudioManager.stopAll();
-        }
-        
-        // 返回begin场景
-        cc.director.loadScene('begin');
     },
 
     onDestroy() {

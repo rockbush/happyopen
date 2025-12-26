@@ -26,6 +26,7 @@ cc.Class({
         console.log('visibleSize', cc.view.getVisibleSize());
         console.log('design', cc.view.getDesignResolutionSize());
 
+        
         //音乐
         // const AudioUtil = require('AudioUtil');
         // AudioUtil.playMusic('bgm01');

@@ -938,8 +938,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 249,
-      "height": 110
+      "width": 137,
+      "height": 61
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -950,15 +950,15 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        396.013,
-        306.55,
+        408.609,
+        303.837,
         0,
         0,
         0,
         0,
         1,
-        0.5,
-        0.5,
+        0.8,
+        0.8,
         0.5
       ]
     },
@@ -1032,8 +1032,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 80,
-      "height": 50.4
+      "width": 140,
+      "height": 88.2
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -1044,15 +1044,15 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        511.981,
-        306.55,
+        554.895,
+        307.445,
         0,
         0,
         0,
         0,
         1,
-        1,
-        1,
+        0.8,
+        0.8,
         1
       ]
     },
@@ -1086,8 +1086,8 @@
     "_dstBlendFactor": 771,
     "_string": "分数",
     "_N$string": "分数",
-    "_fontSize": 40,
-    "_lineHeight": 40,
+    "_fontSize": 70,
+    "_lineHeight": 70,
     "_enableWrapText": true,
     "_N$file": {
       "__uuid__": "1feeae52-6ac0-449a-a7a1-1f6709bf2418"
@@ -1095,7 +1095,7 @@
     "_isSystemFontUsed": false,
     "_spacingX": 0,
     "_batchAsBitmap": false,
-    "_styleFlags": 0,
+    "_styleFlags": 1,
     "_underlineHeight": 0,
     "_N$horizontalAlign": 1,
     "_N$verticalAlign": 1,
@@ -1133,8 +1133,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 160,
-      "height": 50.4
+      "width": 280,
+      "height": 88.2
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -1145,15 +1145,15 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        125.757,
-        305.267,
+        264.583,
+        304.42,
         0,
         0,
         0,
         0,
         1,
-        1,
-        1,
+        0.8,
+        0.8,
         1
       ]
     },
@@ -1195,7 +1195,7 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 244,
+      "width": 243,
       "height": 63
     },
     "_anchorPoint": {
@@ -1281,8 +1281,8 @@
     "_dstBlendFactor": 771,
     "_string": "发射次数",
     "_N$string": "发射次数",
-    "_fontSize": 40,
-    "_lineHeight": 40,
+    "_fontSize": 70,
+    "_lineHeight": 70,
     "_enableWrapText": true,
     "_N$file": {
       "__uuid__": "1feeae52-6ac0-449a-a7a1-1f6709bf2418"
@@ -1290,7 +1290,7 @@
     "_isSystemFontUsed": false,
     "_spacingX": 0,
     "_batchAsBitmap": false,
-    "_styleFlags": 0,
+    "_styleFlags": 1,
     "_underlineHeight": 0,
     "_N$horizontalAlign": 1,
     "_N$verticalAlign": 1,
@@ -1339,15 +1339,15 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        -75.883,
-        155.366,
+        -200.899,
+        303.108,
         0,
         0,
         0,
         0,
         1,
-        1,
-        1,
+        0.8,
+        0.8,
         1
       ]
     },
@@ -1389,8 +1389,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 251,
-      "height": 103
+      "width": 196,
+      "height": 63
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -1484,7 +1484,7 @@
     "_contentSize": {
       "__type__": "cc.Size",
       "width": 0,
-      "height": 50.4
+      "height": 88.2
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -1495,8 +1495,8 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        198.486,
-        6.964,
+        161.179,
+        0,
         0,
         0,
         0,
@@ -1537,8 +1537,8 @@
     "_dstBlendFactor": 771,
     "_string": "",
     "_N$string": "",
-    "_fontSize": 40,
-    "_lineHeight": 40,
+    "_fontSize": 70,
+    "_lineHeight": 70,
     "_enableWrapText": true,
     "_N$file": {
       "__uuid__": "1feeae52-6ac0-449a-a7a1-1f6709bf2418"
@@ -1546,7 +1546,7 @@
     "_isSystemFontUsed": false,
     "_spacingX": 0,
     "_batchAsBitmap": false,
-    "_styleFlags": 0,
+    "_styleFlags": 1,
     "_underlineHeight": 0,
     "_N$horizontalAlign": 1,
     "_N$verticalAlign": 1,
@@ -2289,10 +2289,13 @@
     "infiniteWave": {
       "__id__": 50
     },
-    "maxLaunchCount": 5,
+    "maxLaunchCount": 1,
     "dragCountdown": 4,
     "countdownUI": {
       "__id__": 25
+    },
+    "gameOverPrefab": {
+      "__uuid__": "d4d0f107-980f-422a-85ac-1d6c699cb0bc"
     },
     "_id": "4bSkRNwiNBroYni3A2bpxE"
   },
