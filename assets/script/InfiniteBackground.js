@@ -9,22 +9,30 @@ cc.Class({
         bgWidth: {
             default: 1280,
             tooltip: '背景图片宽度'
+        },
+        
+        // 背景数量（超宽屏建议6张）
+        bgCount: {
+            default: 6,
+            tooltip: '背景图片数量（超宽屏建议6张）'
         }
     },
 
     onLoad() {
         // 获取屏幕半宽
         this.screenHalfWidth = cc.winSize.width / 2;
-        this.node.zIndex = -2
-        // 创建四个背景节点
+        this.node.zIndex = -2;
+        
+        // 创建背景节点
         this.bgs = [];
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < this.bgCount; i++) {
             const bg = this.createBgNode('Background' + (i + 1));
-            bg.x = (i - 1) * this.bgWidth;  // [-1280, 0, 1280, 2560]
+            // 从左边开始铺设：[-1280, 0, 1280, 2560, 3840, 5120]
+            bg.x = (i - 1) * this.bgWidth;
             this.bgs.push(bg);
         }
         
-        console.log('🌄 无限背景初始化完成（4张图）');
+        console.log('🌄 无限背景初始化完成（' + this.bgCount + '张图）');
     },
     
     // 创建背景节点
@@ -67,22 +75,22 @@ cc.Class({
         const leftBg = this.bgs[0];
         const rightBg = this.bgs[this.bgs.length - 1];
         
-        // 屏幕可见范围
-        const leftEdge = -this.screenHalfWidth - this.bgWidth * 1.5;
-        const rightEdge = this.screenHalfWidth + this.bgWidth * 1.5;
+        // 屏幕可见范围（根据背景数量动态调整边界）
+        const leftEdge = -this.screenHalfWidth - this.bgWidth * 2;
+        const rightEdge = this.screenHalfWidth + this.bgWidth * 2;
         
         // 如果最左边的背景完全移出屏幕左边，挪到最右边
         const leftBgRightEdge = leftBg.x + this.bgWidth / 2;
         if (leftBgRightEdge < leftEdge) {
             leftBg.x = rightBg.x + this.bgWidth;
-            console.log('🔄 背景循环: 左→右');
+            // console.log('🔄 背景循环: 左→右');
         }
         
         // 如果最右边的背景完全移出屏幕右边，挪到最左边
         const rightBgLeftEdge = rightBg.x - this.bgWidth / 2;
         if (rightBgLeftEdge > rightEdge) {
             rightBg.x = leftBg.x - this.bgWidth;
-            console.log('🔄 背景循环: 右→左');
+            // console.log('🔄 背景循环: 右→左');
         }
     }
 });

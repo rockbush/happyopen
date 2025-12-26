@@ -22,11 +22,11 @@ cc.Class({
         maxPillarHeight: 300,    // 最大柱子高度
         pillarWidth: 80,         // 柱子宽度
         
-        // 【v9新增】topNode移动速度递增参数
-        baseMinSpeed: 30,        // 初始最小速度
-        baseMaxSpeed: 50,        // 初始最大速度
-        speedIncrement: 10,      // 每根柱子速度范围增加量
-        maxSpeedLimit: 200,      // 速度上限
+        // 【v9新增】topNode移动速度递增参数（已加快30%）
+        baseMinSpeed: 39,        // 初始最小速度 (30 * 1.3)
+        baseMaxSpeed: 65,        // 初始最大速度 (50 * 1.3)
+        speedIncrement: 13,      // 每根柱子速度范围增加量 (10 * 1.3)
+        maxSpeedLimit: 260,      // 速度上限 (200 * 1.3)
 
         // 发射参数
         launchPower: 20,         // 发射力量
@@ -96,14 +96,21 @@ cc.Class({
         
         // 【v10新增】最大发射次数
         maxLaunchCount: {
-            default: 10,
+            default: 5,
             tooltip: '最大发射次数'
         },
         
         // 【v10新增】拖拽倒计时（秒）
         dragCountdown: {
-            default: 5,
+            default: 4,
             tooltip: '拖拽后必须在此时间内发射'
+        },
+        
+        // 【v10新增】倒计时UI节点（包含图片和数字Label）
+        countdownUI: {
+            default: null,
+            type: cc.Node,
+            tooltip: '倒计时UI节点，需包含一个子Label节点用于显示数字'
         }
     },
 
@@ -220,20 +227,34 @@ cc.Class({
         this.canvas.off(cc.Node.EventType.TOUCH_CANCEL);
 
         const self = this;
+        
+        // 【v10】记录当前触摸ID，只响应第一个触摸点
+        this.activeTouchId = null;
 
         this.canvas.on(cc.Node.EventType.TOUCH_START, function (event) {
+            // 只响应第一个触摸点
+            if (self.activeTouchId !== null) return;
+            self.activeTouchId = event.getID();
             self.onTouchStart(event);
         }, this);
 
         this.canvas.on(cc.Node.EventType.TOUCH_MOVE, function (event) {
+            // 只响应第一个触摸点
+            if (event.getID() !== self.activeTouchId) return;
             self.onTouchMove(event);
         }, this);
 
         this.canvas.on(cc.Node.EventType.TOUCH_END, function (event) {
+            // 只响应第一个触摸点
+            if (event.getID() !== self.activeTouchId) return;
+            self.activeTouchId = null;
             self.onTouchEnd(event);
         }, this);
 
         this.canvas.on(cc.Node.EventType.TOUCH_CANCEL, function (event) {
+            // 只响应第一个触摸点
+            if (event.getID() !== self.activeTouchId) return;
+            self.activeTouchId = null;
             self.onTouchEnd(event);
         }, this);
 
@@ -523,7 +544,49 @@ cc.Class({
         const currentPos = event.getLocation();
         const currentTime = Date.now();
 
-        // 拖拽摄像机
+        // 【v10】拖拽猴子时，不允许拖拽摄像机
+        if (this.isDragging) {
+            // 只处理猴子拖拽
+            if (this.isWaterDropFlying || this.isMonkeyMoving) return;
+
+            const touchPos = this.getTouchPosInWorld(event);
+            const slingshotPos = cc.v2(this.monkey.x, this.monkey.y - 50);
+
+            let offset = touchPos.sub(slingshotPos);
+
+            const maxDistance = 150;
+            if (offset.mag() > maxDistance) {
+                offset.normalizeSelf().mulSelf(maxDistance);
+            }
+
+            if (offset.x > 0) offset.x = 0;
+
+            this.currentDragOffset = offset;
+            this.currentDragPos = slingshotPos.add(offset);
+
+            if (this.slingshotIndicator) {
+                const script = this.slingshotIndicator.getComponent('SlingshotIndicator');
+                if (script) script.updatePosition(this.currentDragPos);
+            }
+
+            if (this.monkeyScript) {
+                this.monkeyScript.setHeadDirection(offset);
+            }
+
+            if (this.dragLine && this.monkeyScript) {
+                const dragLineScript = this.dragLine.getComponent('DragLine');
+                if (dragLineScript) {
+                    const headTop = this.monkeyScript.getHeadTopPosition();
+                    const headBottom = this.monkeyScript.getHeadBottomPosition();
+                    dragLineScript.show(headTop, headBottom, this.currentDragPos);
+                }
+            }
+
+            this.drawPreviewTrajectory(offset);
+            return;
+        }
+
+        // 拖拽摄像机（只有在没有拖拽猴子时才允许）
         if (this.isCameraDragging && this.debugCameraDrag) {
             const deltaX = (this.cameraDragStartPos.x - currentPos.x) * this.cameraDragSensitivity;
             this.cameraNode.x = this.cameraStartX + deltaX;
@@ -540,45 +603,6 @@ cc.Class({
             this.clampCameraPosition();
             return;
         }
-
-        // 拖拽弹弓
-        if (!this.isDragging) return;
-        if (this.isWaterDropFlying || this.isMonkeyMoving) return;
-
-        const touchPos = this.getTouchPosInWorld(event);
-        const slingshotPos = cc.v2(this.monkey.x, this.monkey.y - 50);
-
-        let offset = touchPos.sub(slingshotPos);
-
-        const maxDistance = 150;
-        if (offset.mag() > maxDistance) {
-            offset.normalizeSelf().mulSelf(maxDistance);
-        }
-
-        if (offset.x > 0) offset.x = 0;
-
-        this.currentDragOffset = offset;
-        this.currentDragPos = slingshotPos.add(offset);
-
-        if (this.slingshotIndicator) {
-            const script = this.slingshotIndicator.getComponent('SlingshotIndicator');
-            if (script) script.updatePosition(this.currentDragPos);
-        }
-
-        if (this.monkeyScript) {
-            this.monkeyScript.setHeadDirection(offset);
-        }
-
-        if (this.dragLine && this.monkeyScript) {
-            const dragLineScript = this.dragLine.getComponent('DragLine');
-            if (dragLineScript) {
-                const headTop = this.monkeyScript.getHeadTopPosition();
-                const headBottom = this.monkeyScript.getHeadBottomPosition();
-                dragLineScript.show(headTop, headBottom, this.currentDragPos);
-            }
-        }
-
-        this.drawPreviewTrajectory(offset);
     },
 
     getTouchPosInWorld(event) {
@@ -775,26 +799,42 @@ cc.Class({
             // 【v10】命中了，不扣发射次数
             this.pendingLaunchConsume = false;
             
-            this.score += 100;
-            this.updateUI();
-            
             // 【v8新增】播放命中音效
             if (typeof AudioManager !== 'undefined') {
                 AudioManager.playSoundBundle('bome', 'audio');
             }
 
             let targetPillar = null;
+            let targetPillarIndex = -1;
             for (let i = 0; i < this.pillars.length; i++) {
                 const pillar = this.pillars[i];
                 if (!pillar || !pillar.isValid) continue;
 
                 if (Math.abs(landPos.x - pillar.x) < 60) {
                     targetPillar = pillar;
+                    targetPillarIndex = i;
                     break;
                 }
             }
 
             if (targetPillar) {
+                // 【v10】计算跳过了几个柱子（得分 = 跳过的柱子数）
+                let skippedPillars = 0;
+                const monkeyX = this.monkey.x;
+                for (let i = 0; i < this.pillars.length; i++) {
+                    const pillar = this.pillars[i];
+                    if (!pillar || !pillar.isValid) continue;
+                    // 柱子在猴子和目标柱子之间
+                    if (pillar.x > monkeyX && pillar.x < targetPillar.x) {
+                        skippedPillars++;
+                    }
+                }
+                // 至少+1分（跳到下一个柱子）
+                const scoreAdd = Math.max(1, skippedPillars + 1);
+                this.score += scoreAdd;
+                this.updateUI();
+                console.log('🎯 跳过柱子数:', skippedPillars, '得分+', scoreAdd);
+                
                 const pillarScript = targetPillar.getComponent('Pillar');
                 
                 // 【v8新增】命中后停止topNode移动
@@ -1118,7 +1158,7 @@ cc.Class({
 
     updateUI() {
         if (this.scoreLabel) {
-            this.scoreLabel.string = '得分: ' + this.score;
+            this.scoreLabel.string = this.score;
         }
     },
     
@@ -1128,7 +1168,7 @@ cc.Class({
         // 剩余次数显示：优先使用挂载的Label，否则自动创建
         if (this.launchCountLabel) {
             // 使用挂载的Label
-            this.launchCountLabel.string = '剩余: ' + this.remainingLaunches;
+            this.launchCountLabel.string = this.remainingLaunches;
         } else {
             // 自动创建（顶部中间）
             this.launchCountNode = new cc.Node('LaunchCount');
@@ -1136,7 +1176,7 @@ cc.Class({
             this.launchCountNode.setPosition(0, 320);
             this.launchCountNode.zIndex = 100;
             const countLabel = this.launchCountNode.addComponent(cc.Label);
-            countLabel.string = '剩余: ' + this.remainingLaunches;
+            countLabel.string = this.remainingLaunches;
             countLabel.fontSize = 36;
             countLabel.lineHeight = 36;
             countLabel.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
@@ -1146,21 +1186,29 @@ cc.Class({
             countOutline.width = 3;
         }
         
-        // 创建倒计时显示（屏幕中上方）
-        this.countdownNode = new cc.Node('Countdown');
-        this.countdownNode.parent = cc.find('Canvas');
-        this.countdownNode.setPosition(0, 200);
-        this.countdownNode.zIndex = 100;
-        const cdLabel = this.countdownNode.addComponent(cc.Label);
-        cdLabel.string = '';
-        cdLabel.fontSize = 72;
-        cdLabel.lineHeight = 72;
-        cdLabel.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
-        this.countdownNode.color = cc.Color.WHITE;
-        const cdOutline = this.countdownNode.addComponent(cc.LabelOutline);
-        cdOutline.color = cc.color(0, 0, 0);
-        cdOutline.width = 4;
-        this.countdownNode.active = false;
+        // 倒计时显示：优先使用挂载的UI节点，否则自动创建
+        if (this.countdownUI) {
+            // 使用挂载的节点，查找子Label
+            this.countdownNode = this.countdownUI;
+            this.countdownLabel = this.countdownUI.getComponentInChildren(cc.Label);
+            this.countdownNode.active = false;
+        } else {
+            // 自动创建（屏幕中上方）
+            this.countdownNode = new cc.Node('Countdown');
+            this.countdownNode.parent = cc.find('Canvas');
+            this.countdownNode.setPosition(0, 200);
+            this.countdownNode.zIndex = 100;
+            this.countdownLabel = this.countdownNode.addComponent(cc.Label);
+            this.countdownLabel.string = '';
+            this.countdownLabel.fontSize = 72;
+            this.countdownLabel.lineHeight = 72;
+            this.countdownLabel.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+            this.countdownNode.color = cc.Color.WHITE;
+            const cdOutline = this.countdownNode.addComponent(cc.LabelOutline);
+            cdOutline.color = cc.color(0, 0, 0);
+            cdOutline.width = 4;
+            this.countdownNode.active = false;
+        }
         
         // 创建提示文字节点（屏幕中央）
         this.tipNode = new cc.Node('Tip');
@@ -1237,11 +1285,11 @@ cc.Class({
     updateLaunchCountUI() {
         // 优先使用挂载的Label
         if (this.launchCountLabel) {
-            this.launchCountLabel.string = '剩余: ' + this.remainingLaunches;
+            this.launchCountLabel.string = this.remainingLaunches;
         } else if (this.launchCountNode) {
             const label = this.launchCountNode.getComponent(cc.Label);
             if (label) {
-                label.string = '剩余: ' + this.remainingLaunches;
+                label.string = this.remainingLaunches;
             }
         }
     },
@@ -1316,16 +1364,14 @@ cc.Class({
     },
     
     updateCountdownDisplay() {
-        if (this.countdownNode) {
-            const label = this.countdownNode.getComponent(cc.Label);
-            if (label) {
-                label.string = this.currentCountdown.toString();
-            }
+        // 使用保存的countdownLabel
+        if (this.countdownLabel) {
+            this.countdownLabel.string = this.currentCountdown.toString();
             // 最后2秒变红
             if (this.currentCountdown <= 2) {
-                this.countdownNode.color = cc.Color.RED;
+                this.countdownLabel.node.color = cc.Color.RED;
             } else {
-                this.countdownNode.color = cc.Color.WHITE;
+                this.countdownLabel.node.color = cc.Color.WHITE;
             }
         }
     },

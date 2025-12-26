@@ -644,15 +644,15 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        0,
+        -23.981,
         -175.86,
         0,
         0,
         0,
         0,
         1,
-        0.85,
-        0.85,
+        0.7,
+        0.7,
         1
       ]
     },
@@ -1518,7 +1518,7 @@
     "_normalMaterial": null,
     "_grayMaterial": null,
     "duration": 0.1,
-    "zoomScale": 1.2,
+    "zoomScale": 0.9,
     "clickEvents": [
       {
         "__id__": 38

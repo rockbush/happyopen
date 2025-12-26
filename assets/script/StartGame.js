@@ -35,6 +35,7 @@ cc.Class({
     },
 
     playGame: function () {
+        AudioManager.playSoundBundle('anniudianji', 'audio');
         cc.director.loadScene('normalScene');
     },
 
