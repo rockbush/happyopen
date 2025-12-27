@@ -15,8 +15,11 @@ cc.Class({
         this.hasCheckedCollision = false;
         this.isDestroying = false;
         
-        // 开始检测与柱子顶部的碰撞（提高检测频率）
-        this.schedule(this.checkTopCollision, 0.016);
+        // 获取海浪碰撞线的Y坐标（海浪高度的一半）
+        this.waveCollisionY = this.getWaveCollisionY();
+        
+        // 开始检测碰撞（提高检测频率）
+        this.schedule(this.checkAllCollisions, 0.016);
         
         // 5秒后自动销毁（避免永远飞行）
         this.scheduleOnce(() => {
@@ -24,6 +27,30 @@ cc.Class({
                 this.onMissTarget();
             }
         }, 5);
+    },
+    
+    // 获取海浪碰撞线的Y坐标
+    getWaveCollisionY() {
+        if (!this.gameManager) return -360;
+        
+        // 尝试从 GameManager 获取 InfiniteWave 节点
+        const infiniteWave = this.gameManager.infiniteWave;
+        if (infiniteWave) {
+            const waveScript = infiniteWave.getComponent('InfiniteWave');
+            if (waveScript) {
+                // 海浪高度的一半作为碰撞线
+                // 海浪Y位置 = -screenHalfHeight + waveHeight/2 + waveOffsetY
+                // 碰撞线 = 海浪顶部 - waveHeight/2 = -screenHalfHeight + waveHeight + waveOffsetY - waveHeight/2
+                //        = -screenHalfHeight + waveHeight/2 + waveOffsetY
+                const screenHalfHeight = cc.winSize.height / 2;
+                const collisionY = -screenHalfHeight + waveScript.waveHeight / 2 + waveScript.waveOffsetY;
+                console.log('🌊 海浪碰撞线Y:', collisionY.toFixed(0));
+                return collisionY;
+            }
+        }
+        
+        // 默认值（屏幕底部附近）
+        return -300;
     },
 
     // 圆形与矩形碰撞检测
@@ -40,9 +67,21 @@ cc.Class({
         return distanceSquared <= r * r;
     },
 
-    checkTopCollision() {
+    // 统一碰撞检测
+    checkAllCollisions() {
         if (this.hasCheckedCollision || this.isDestroying || !this.gameManager) return;
         if (!this.node || !this.node.isValid) return;
+        
+        const cx = this.node.position.x;
+        const cy = this.node.position.y;
+        const cr = this.collisionRadius;
+        
+        // 1. 先检测是否碰到海浪（优先级最高，因为掉水里就结束了）
+        if (cy - cr <= this.waveCollisionY) {
+            console.log('🌊 水滴落入海浪！Y:', cy.toFixed(0), '海浪线:', this.waveCollisionY.toFixed(0));
+            this.onMissTarget();
+            return;
+        }
         
         const pillars = this.gameManager.pillars;
         
@@ -51,35 +90,52 @@ cc.Class({
             if (!pillar || !pillar.isValid) continue;
             
             const pillarScript = pillar.getComponent('Pillar');
-            if (!pillarScript || !pillarScript.topNode) continue;
+            if (!pillarScript) continue;
             
             // 获取 Pillar 的缩放值
             const pillarScale = pillar.scale || 1;
             
-            // 获取 topNode 的世界坐标
-            const topWorldPos = pillarScript.topNode.convertToWorldSpaceAR(cc.v2(0, 0));
-            const topNodePos = this.node.parent.convertToNodeSpaceAR(topWorldPos);
+            // 2. 检测 topNode 碰撞（命中目标）
+            if (pillarScript.topNode) {
+                const topWorldPos = pillarScript.topNode.convertToWorldSpaceAR(cc.v2(0, 0));
+                const topNodePos = this.node.parent.convertToNodeSpaceAR(topWorldPos);
+                
+                const topFullWidth = pillarScript.topNode.width * pillarScale;
+                const topFullHeight = pillarScript.topNode.height * pillarScale;
+                
+                // 只使用下半部分作为碰撞区域
+                const topRectX = topNodePos.x - topFullWidth / 2;
+                const topRectY = topNodePos.y - topFullHeight / 2;
+                const topRectW = topFullWidth;
+                const topRectH = topFullHeight / 2;
+                
+                if (this.circleRectCollision(cx, cy, cr, topRectX, topRectY, topRectW, topRectH)) {
+                    console.log('✅ 命中 topNode！');
+                    this.onHitTarget();
+                    return;
+                }
+            }
             
-            // 获取 topNode 原始尺寸，并应用缩放
-            const topFullWidth = pillarScript.topNode.width * pillarScale;
-            const topFullHeight = pillarScript.topNode.height * pillarScale;
-            
-            // 只使用下半部分作为碰撞区域
-            // 矩形左下角坐标和尺寸（应用缩放后）
-            const rectX = topNodePos.x - topFullWidth / 2;
-            const rectY = topNodePos.y - topFullHeight / 2;  // 从中心往下
-            const rectW = topFullWidth;
-            const rectH = topFullHeight / 2;  // 只有下半部分
-            
-            // 水滴圆心和半径
-            const cx = this.node.position.x;
-            const cy = this.node.position.y;
-            const cr = this.collisionRadius;
-            
-            // 圆形与矩形碰撞检测
-            if (this.circleRectCollision(cx, cy, cr, rectX, rectY, rectW, rectH)) {
-                this.onHitTarget();
-                return;
+            // 3. 检测 bodyNode 碰撞（未命中）
+            if (pillarScript.bodyNode) {
+                const bodyWorldPos = pillarScript.bodyNode.convertToWorldSpaceAR(cc.v2(0, 0));
+                const bodyNodePos = this.node.parent.convertToNodeSpaceAR(bodyWorldPos);
+                
+                // bodyNode 的尺寸（应用缩放）
+                const bodyWidth = pillarScript.bodyNode.width * pillarScale;
+                const bodyHeight = pillarScript.bodyNode.height * pillarScale;
+                
+                // bodyNode 锚点在底部中心 (0.5, 0)
+                const bodyRectX = bodyNodePos.x - bodyWidth / 2;
+                const bodyRectY = bodyNodePos.y;
+                const bodyRectW = bodyWidth;
+                const bodyRectH = bodyHeight;
+                
+                if (this.circleRectCollision(cx, cy, cr, bodyRectX, bodyRectY, bodyRectW, bodyRectH)) {
+                    console.log('❌ 碰到 bodyNode！');
+                    this.onMissTarget();
+                    return;
+                }
             }
         }
     },

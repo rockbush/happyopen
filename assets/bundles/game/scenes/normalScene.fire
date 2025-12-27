@@ -2289,13 +2289,16 @@
     "infiniteWave": {
       "__id__": 50
     },
-    "maxLaunchCount": 1,
+    "maxLaunchCount": 5,
     "dragCountdown": 4,
     "countdownUI": {
       "__id__": 25
     },
     "gameOverPrefab": {
       "__uuid__": "d4d0f107-980f-422a-85ac-1d6c699cb0bc"
+    },
+    "explosionPrefab": {
+      "__uuid__": "1a3bf237-30c3-43d2-a791-c98c3b0824ea"
     },
     "_id": "4bSkRNwiNBroYni3A2bpxE"
   },

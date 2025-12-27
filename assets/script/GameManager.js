@@ -118,6 +118,13 @@ cc.Class({
             default: null,
             type: cc.Prefab,
             tooltip: 'GameOver界面预制体'
+        },
+        
+        // 【v12新增】爆炸效果预制体
+        explosionPrefab: {
+            default: null,
+            type: cc.Prefab,
+            tooltip: '水滴命中时的爆炸效果预制体'
         }
     },
 
@@ -161,7 +168,6 @@ cc.Class({
         this.remainingLaunches = this.maxLaunchCount;  // 剩余发射次数
         this.countdownTimer = null;  // 倒计时定时器
         this.isCountingDown = false;  // 是否正在倒计时
-        this.pendingLaunchConsume = false;  // 待扣除发射次数
         this.isGameOver = false;  // 游戏是否结束
 
         // 【新增】摄像机拖拽相关变量
@@ -669,9 +675,6 @@ cc.Class({
         if (typeof AudioManager !== 'undefined') {
             AudioManager.playSoundBundle('shot', 'audio');
         }
-        
-        // 【v10】标记这次发射待扣除（如果命中则不扣）
-        this.pendingLaunchConsume = true;
 
         this.launchWaterDrop();
     },
@@ -803,8 +806,10 @@ cc.Class({
         console.log('💧 水滴落地，命中柱子:', landedOnPillar);
 
         if (landedOnPillar) {
-            // 【v10】命中了，不扣发射次数
-            this.pendingLaunchConsume = false;
+            // 【v12】命中topNode，不扣发射次数
+            
+            // 【v12新增】播放爆炸效果
+            this.playExplosion(landPos);
             
             // 【v8新增】播放命中音效
             if (typeof AudioManager !== 'undefined') {
@@ -873,11 +878,8 @@ cc.Class({
                 }, 0.1);
             }
         } else {
-            // 【v10】未命中，扣发射次数
-            if (this.pendingLaunchConsume) {
-                this.pendingLaunchConsume = false;
-                this.consumeLaunch();
-            }
+            // 【v12】未命中（碰到bodyNode或落入海浪），扣发射次数
+            this.consumeLaunch();
             
             console.log('❌ 未命中，再试一次');
             this.pathPoints = [];
@@ -1363,6 +1365,9 @@ cc.Class({
         
         // 显示"发射失败"提示
         this.showTip('发射失败');
+        
+        // 【v12】拖拽超时也扣除发射次数
+        this.consumeLaunch();
     },
     
     showTip(text) {
@@ -1489,6 +1494,56 @@ cc.Class({
                 cc.director.loadScene('begin');
             });
         }, 2);
+    },
+    
+    // ==================== 【v12】爆炸效果 ====================
+    
+    /**
+     * 在指定位置播放爆炸效果
+     * @param {cc.Vec2} pos - 爆炸位置
+     */
+    playExplosion(pos) {
+        if (!this.explosionPrefab) {
+            console.log('💥 未设置爆炸预制体');
+            return;
+        }
+        
+        // 实例化爆炸效果
+        const explosion = cc.instantiate(this.explosionPrefab);
+        explosion.parent = this.node;
+        explosion.position = pos;
+        explosion.zIndex = 100;
+        
+        console.log('💥 播放爆炸效果，位置:', pos.x.toFixed(0), pos.y.toFixed(0));
+        
+        // 获取动画组件并播放
+        const anim = explosion.getComponent(cc.Animation);
+        if (anim) {
+            // 获取动画时长
+            let duration = 0.5;  // 默认0.5秒
+            const clips = anim.getClips();
+            if (clips && clips.length > 0) {
+                duration = clips[0].duration;
+            }
+            
+            // 播放动画
+            anim.play();
+            
+            // 动画结束后销毁（加1秒延迟）
+            this.scheduleOnce(() => {
+                if (explosion && explosion.isValid) {
+                    explosion.destroy();
+                    console.log('💥 爆炸效果已销毁');
+                }
+            }, duration + 1.0);
+        } else {
+            // 没有动画组件，直接延迟销毁
+            this.scheduleOnce(() => {
+                if (explosion && explosion.isValid) {
+                    explosion.destroy();
+                }
+            }, 0.5);
+        }
     },
 
     onDestroy() {
