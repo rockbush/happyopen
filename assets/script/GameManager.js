@@ -803,7 +803,7 @@ cc.Class({
             this.trajectoryTimer = null;
         }
 
-        console.log('💧 水滴落地，命中柱子:', landedOnPillar);
+        console.log('💧 水滴落地，命中柱子:', landedOnPillar, '位置:', landPos.x.toFixed(0), landPos.y.toFixed(0));
 
         if (landedOnPillar) {
             // 【v12】命中topNode，不扣发射次数
@@ -816,18 +816,45 @@ cc.Class({
                 AudioManager.playSoundBundle('bome', 'audio');
             }
 
+            // 【v12修复】查找目标柱子时，使用 topNode 的世界坐标来匹配
             let targetPillar = null;
             let targetPillarIndex = -1;
+            let minDistance = Infinity;
+            
             for (let i = 0; i < this.pillars.length; i++) {
                 const pillar = this.pillars[i];
                 if (!pillar || !pillar.isValid) continue;
-
-                if (Math.abs(landPos.x - pillar.x) < 60) {
+                
+                const pillarScript = pillar.getComponent('Pillar');
+                if (!pillarScript || !pillarScript.topNode) continue;
+                
+                // 获取 topNode 的世界坐标，转换到游戏节点坐标系
+                const topWorldPos = pillarScript.topNode.convertToWorldSpaceAR(cc.v2(0, 0));
+                const topNodePos = this.node.convertToNodeSpaceAR(topWorldPos);
+                
+                // 计算水滴落点与 topNode 中心的距离
+                const dx = landPos.x - topNodePos.x;
+                const dy = landPos.y - topNodePos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // 获取 topNode 的尺寸（考虑缩放）
+                const pillarScale = pillar.scale || 1;
+                const topWidth = pillarScript.topNode.width * pillarScale;
+                const topHeight = pillarScript.topNode.height * pillarScale;
+                const maxDistance = Math.max(topWidth, topHeight);  // 允许的最大匹配距离
+                
+                console.log('🔍 检查柱子', i, '| topNode位置:', topNodePos.x.toFixed(0), topNodePos.y.toFixed(0), 
+                           '| 距离:', distance.toFixed(0), '| 最大允许:', maxDistance.toFixed(0));
+                
+                // 找到距离最近且在合理范围内的柱子
+                if (distance < maxDistance && distance < minDistance) {
+                    minDistance = distance;
                     targetPillar = pillar;
                     targetPillarIndex = i;
-                    break;
                 }
             }
+            
+            console.log('🎯 找到目标柱子:', targetPillar ? '是' : '否', '索引:', targetPillarIndex);
 
             if (targetPillar) {
                 // 【v10】计算跳过了几个柱子（得分 = 跳过的柱子数）
@@ -876,6 +903,11 @@ cc.Class({
                 this.scheduleOnce(() => {
                     this.moveMonkeyAlongPath(finalTargetPos);
                 }, 0.1);
+            } else {
+                // 【v12新增】碰撞检测成功但找不到对应柱子，当作未命中处理
+                console.warn('⚠️ 碰撞成功但找不到目标柱子，当作未命中处理');
+                this.consumeLaunch();
+                this.pathPoints = [];
             }
         } else {
             // 【v12】未命中（碰到bodyNode或落入海浪），扣发射次数
