@@ -21,6 +21,7 @@ cc.Class({
             });
         });
 
+        AudioManager.setMusicVolume(2)
         AudioManager.playMusicBundle('sea', 'audio');
         console.log('frameSize', cc.view.getFrameSize());
         console.log('visibleSize', cc.view.getVisibleSize());
@@ -37,6 +38,7 @@ cc.Class({
 
     playGame: function () {
         AudioManager.playSoundBundle('anniudianji', 'audio');
+        AudioManager.stopMusic()
         cc.director.loadScene('normalScene');
     },
 

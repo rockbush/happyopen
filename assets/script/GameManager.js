@@ -125,6 +125,27 @@ cc.Class({
             default: null,
             type: cc.Prefab,
             tooltip: '水滴命中时的爆炸效果预制体'
+        },
+        
+        // 【v13新增】声音开关按钮节点
+        soundToggleBtn: {
+            default: null,
+            type: cc.Node,
+            tooltip: '声音开关按钮节点'
+        },
+        
+        // 【v13新增】声音开启时的图片
+        soundOnSprite: {
+            default: null,
+            type: cc.SpriteFrame,
+            tooltip: '声音开启时显示的图片'
+        },
+        
+        // 【v13新增】声音关闭时的图片
+        soundOffSprite: {
+            default: null,
+            type: cc.SpriteFrame,
+            tooltip: '声音关闭时显示的图片'
         }
     },
 
@@ -208,10 +229,8 @@ cc.Class({
         // 打印世界信息
         this.printWorldInfo();
         
-        // 【v8新增】播放背景音乐
-        if (typeof AudioManager !== 'undefined') {
-            AudioManager.playMusicBundle('background', 'audio');
-        }
+        // 【v13新增】初始化声音开关
+        this.initSoundToggle();
         
         // 【v10新增】创建UI元素
         this.createGameUI();
@@ -1636,6 +1655,88 @@ cc.Class({
                     explosion.destroy();
                 }
             }, 0.5);
+        }
+    },
+    
+    // ==================== 【v13】声音开关系统 ====================
+    
+    /**
+     * 初始化声音开关
+     */
+    initSoundToggle() {
+        // 从本地存储读取声音状态，默认开启
+        const savedState = cc.sys.localStorage.getItem('sound_enabled');
+        this.isSoundOn = true  // 默认为 true
+        
+        // 更新按钮图片
+        this.updateSoundToggleUI();
+        
+        // 根据状态播放或停止背景音乐
+        if (this.isSoundOn) {
+            this.playBackgroundMusic();
+        }
+        
+        // 绑定按钮点击事件
+        if (this.soundToggleBtn) {
+            this.soundToggleBtn.on(cc.Node.EventType.TOUCH_END, this.onSoundToggleClick, this);
+        }
+        
+        console.log('🔊 声音开关初始化，状态:', this.isSoundOn ? '开启' : '关闭');
+    },
+    
+    /**
+     * 声音开关按钮点击
+     */
+    onSoundToggleClick() {
+        this.isSoundOn = !this.isSoundOn;
+        
+        // 保存状态到本地存储
+        cc.sys.localStorage.setItem('sound_enabled', this.isSoundOn.toString());
+        
+        // 更新UI
+        this.updateSoundToggleUI();
+        
+        // 播放或停止音乐
+        if (this.isSoundOn) {
+            this.playBackgroundMusic();
+        } else {
+            this.stopBackgroundMusic();
+        }
+        
+        console.log('🔊 声音开关切换，状态:', this.isSoundOn ? '开启' : '关闭');
+    },
+    
+    /**
+     * 更新声音开关按钮UI
+     */
+    updateSoundToggleUI() {
+        if (!this.soundToggleBtn) return;
+        
+        const sprite = this.soundToggleBtn.getComponent(cc.Sprite);
+        if (sprite) {
+            if (this.isSoundOn && this.soundOnSprite) {
+                sprite.spriteFrame = this.soundOnSprite;
+            } else if (!this.isSoundOn && this.soundOffSprite) {
+                sprite.spriteFrame = this.soundOffSprite;
+            }
+        }
+    },
+    
+    /**
+     * 播放背景音乐
+     */
+    playBackgroundMusic() {
+        if (typeof AudioManager !== 'undefined') {
+            AudioManager.playMusicBundle('background', 'audio');
+        }
+    },
+    
+    /**
+     * 停止背景音乐
+     */
+    stopBackgroundMusic() {
+        if (typeof AudioManager !== 'undefined') {
+            AudioManager.stopMusic();
         }
     },
 

@@ -394,7 +394,7 @@
       "__id__": 6
     },
     "_children": [],
-    "_active": true,
+    "_active": false,
     "_components": [
       {
         "__id__": 8
@@ -591,7 +591,7 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        36.5,
+        -94.5,
         0,
         0,
         0,
@@ -724,7 +724,7 @@
       "__id__": 6
     },
     "_children": [],
-    "_active": true,
+    "_active": false,
     "_components": [
       {
         "__id__": 14
@@ -756,7 +756,7 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        167.5,
+        36.5,
         0,
         0,
         0,
@@ -2260,7 +2260,7 @@
     "speedIncrement": 13,
     "maxSpeedLimit": 260,
     "launchPower": 14,
-    "monkeyScreenOffsetX": 200,
+    "monkeyScreenOffsetX": 400,
     "scoreLabel": {
       "__id__": 20
     },
@@ -2290,7 +2290,7 @@
       "__id__": 50
     },
     "maxLaunchCount": 5,
-    "dragCountdown": 4,
+    "dragCountdown": 15,
     "countdownUI": {
       "__id__": 25
     },
@@ -2299,6 +2299,15 @@
     },
     "explosionPrefab": {
       "__uuid__": "1a3bf237-30c3-43d2-a791-c98c3b0824ea"
+    },
+    "soundToggleBtn": {
+      "__id__": 10
+    },
+    "soundOnSprite": {
+      "__uuid__": "37b88812-7285-4878-8cae-b3c3e92600c6"
+    },
+    "soundOffSprite": {
+      "__uuid__": "45713aeb-4341-4706-b8e1-a4d1a60adc44"
     },
     "_id": "4bSkRNwiNBroYni3A2bpxE"
   },
