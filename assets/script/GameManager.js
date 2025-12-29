@@ -806,6 +806,41 @@ cc.Class({
         console.log('💧 水滴落地，命中柱子:', landedOnPillar, '位置:', landPos.x.toFixed(0), landPos.y.toFixed(0));
 
         if (landedOnPillar) {
+            // 【v12修复】用碰撞位置作为路径终点
+            // 找到路径中离碰撞点最近的点，从那里截断
+            if (this.pathPoints.length > 1) {
+                let minDist = Infinity;
+                let closestIndex = this.pathPoints.length - 1;
+                
+                for (let i = 0; i < this.pathPoints.length; i++) {
+                    const point = this.pathPoints[i];
+                    const dx = point.x - landPos.x;
+                    const dy = point.y - landPos.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closestIndex = i;
+                    }
+                }
+                
+                // 截断到最近点（保留最近点之前的路径）
+                this.pathPoints = this.pathPoints.slice(0, closestIndex + 1);
+                
+                // 如果最近点不是碰撞点，把最后一个点替换为碰撞点
+                if (minDist > 5) {
+                    // 移除最后一个点，用碰撞点替代
+                    if (this.pathPoints.length > 0) {
+                        this.pathPoints[this.pathPoints.length - 1] = landPos.clone();
+                    }
+                }
+                
+                console.log('🛤️ 路径修正，最近点索引:', closestIndex, '距离:', minDist.toFixed(0), '路径点数:', this.pathPoints.length);
+            } else {
+                // 路径点太少，直接添加碰撞点
+                this.pathPoints.push(landPos.clone());
+            }
+            
             // 【v12】命中topNode，不扣发射次数
             
             // 【v12新增】播放爆炸效果
@@ -881,22 +916,48 @@ cc.Class({
                     pillarScript.stopMoving();
                 }
                 
-                // 使用 standPoint 计算目标位置
+                // 【v12修复】计算最终目标位置
+                // 使用碰撞点的X坐标，但限制在topNode范围内，Y坐标使用standPoint高度
                 let finalTargetPos;
+                
+                // 获取topNode的位置和尺寸
+                const topWorldPos = pillarScript.topNode.convertToWorldSpaceAR(cc.v2(0, 0));
+                const topNodePos = this.node.convertToNodeSpaceAR(topWorldPos);
+                const pillarScale = targetPillar.scale || 1;
+                const topWidth = pillarScript.topNode.width * pillarScale;
+                const topHalfWidth = topWidth / 2;
+                
+                // 获取standPoint的Y高度
+                let targetY;
                 if (pillarScript.standPoint) {
-                    // 获取 standPoint 的世界坐标，转换到游戏节点坐标系
                     const standWorldPos = pillarScript.getStandPointWorldPos();
-                    finalTargetPos = this.node.convertToNodeSpaceAR(standWorldPos);
+                    const standPos = this.node.convertToNodeSpaceAR(standWorldPos);
+                    targetY = standPos.y;
                 } else {
-                    // 兜底：使用原来的计算方式
                     const topNodeY = targetPillar.y + pillarScript.pillarHeight;
-                    const topNodeHalfHeight = 10;
-                    const monkeyOffsetY = 5;
-                    const targetY = topNodeY + topNodeHalfHeight + monkeyOffsetY;
-                    finalTargetPos = cc.v2(targetPillar.x, targetY);
+                    targetY = topNodeY + 10 + 5;
                 }
+                
+                // 使用碰撞点的X，但限制在topNode范围内
+                let targetX = landPos.x;
+                const topLeftX = topNodePos.x - topHalfWidth + 20;  // 左边界+边距
+                const topRightX = topNodePos.x + topHalfWidth - 20; // 右边界-边距
+                
+                // 限制X在合理范围内
+                targetX = Math.max(topLeftX, Math.min(targetX, topRightX));
+                
+                finalTargetPos = cc.v2(targetX, targetY);
+                
+                console.log('🎯 目标位置:', finalTargetPos.x.toFixed(0), finalTargetPos.y.toFixed(0), 
+                           '| topNode中心:', topNodePos.x.toFixed(0), '| 范围:', topLeftX.toFixed(0), '~', topRightX.toFixed(0));
 
-                console.log('🎯 目标位置:', finalTargetPos);
+                // 【v12修复】确保路径最后一点就是最终目标位置
+                // 这样猴子沿路径走到终点就是正确位置
+                if (this.pathPoints.length > 0) {
+                    this.pathPoints[this.pathPoints.length - 1] = finalTargetPos.clone();
+                } else {
+                    this.pathPoints.push(finalTargetPos.clone());
+                }
 
                 this.drawPath();
 

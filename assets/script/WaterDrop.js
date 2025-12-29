@@ -148,13 +148,25 @@ cc.Class({
         this.isDestroying = true;
         this.unscheduleAllCallbacks();
         
-        if (this.gameManager && this.node && this.node.isValid) {
-            this.gameManager.onWaterDropLanded(true, this.node.position.clone());
+        // 【v12修复】立即停止水滴运动
+        const rigidBody = this.node.getComponent(cc.RigidBody);
+        if (rigidBody) {
+            rigidBody.linearVelocity = cc.v2(0, 0);
+            rigidBody.gravityScale = 0;
         }
         
-        this.scheduleOnce(() => {
-            this.destroySafely();
-        }, 0.5);
+        // 记录碰撞位置
+        const landPos = this.node.position.clone();
+        
+        // 立即隐藏水滴
+        this.node.opacity = 0;
+        
+        if (this.gameManager) {
+            this.gameManager.onWaterDropLanded(true, landPos);
+        }
+        
+        // 立即销毁
+        this.destroySafely();
     },
 
     onMissTarget() {
